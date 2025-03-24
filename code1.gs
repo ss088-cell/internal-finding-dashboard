@@ -48,11 +48,11 @@ function createNewReport() {
     return;
   }
 
-  // Create a filter view on the source sheet to filter "Bus App Name" for specific apps (ABC, BCA, DBA, EEE)
-  const filter = sourceSheet.getFilter();
-  if (!filter) {
-    sourceSheet.createFilter();
-  }
+  // Get the range to apply the filter (assuming data starts from the first row and first column)
+  const dataRange = sourceSheet.getDataRange();
+  
+  // Create a filter on the range (this works only on data ranges, not entire sheets)
+  const filter = dataRange.createFilter();
 
   // Apply a filter on the "Bus App Name" column (12th column, "Z")
   const columnToFilter = 12;  // Column "Z" (12th column)
