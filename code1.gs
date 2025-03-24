@@ -1,7 +1,7 @@
 // Main function to run weekly
 function runWeeklyReportProcess() {
   moveOldReport();  // Move the old report to Location Y
-  createNewReport();  // Create the new report in Location X
+  processLargeData();  // Process the large data in batches
 }
 
 // 1. Move the old report to Location Y with timestamp
@@ -32,15 +32,11 @@ function moveOldReport() {
   Logger.log('Report moved to Location Y with name: ' + newName);
 }
 
-// 2. Create the new report in Location X
-function createNewReport() {
-  // The URL of the source Google Sheet (view-only access)
+// 2. Process the large data in chunks to avoid timeout
+function processLargeData() {
+  const scriptProperties = PropertiesService.getScriptProperties();
   const sourceSheetUrl = 'https://docs.google.com/spreadsheets/d/your-spreadsheet-id/edit'; // Replace with your Google Sheet URL
-  
-  // Open the source spreadsheet by URL (view access)
   const sourceSpreadsheet = SpreadsheetApp.openByUrl(sourceSheetUrl);
-  
-  // Access the 'Detail Data' sheet
   const sourceSheet = sourceSpreadsheet.getSheetByName('Detail Data');
   
   if (!sourceSheet) {
@@ -48,70 +44,74 @@ function createNewReport() {
     return;
   }
 
-  // Get the range to apply the filter (assuming data starts from the first row and first column)
-  const dataRange = sourceSheet.getDataRange();
+  // Get the total number of rows in the source sheet
+  const totalRows = sourceSheet.getLastRow();
   
-  // Create a filter on the range (this works only on data ranges, not entire sheets)
-  const filter = dataRange.createFilter();
+  // Get the current row to start from (stored in properties)
+  let startRow = parseInt(scriptProperties.getProperty('startRow') || '1');
+  
+  // If we are at the last batch, reset the startRow to 1
+  if (startRow > totalRows) {
+    scriptProperties.deleteProperty('startRow');
+    Logger.log('Process completed');
+    return;
+  }
 
-  // Apply a filter on the "Bus App Name" column (12th column, "Z")
-  const columnToFilter = 12;  // Column "Z" (12th column)
-  const filterCriteria = SpreadsheetApp.newFilterCriteria()
-    .whenTextContains('ABC')
-    .or().whenTextContains('bca')
-    .or().whenTextContains('dba')
-    .or().whenTextContains('eee')
-    .build();
-
-  filter.setColumnFilterCriteria(columnToFilter, filterCriteria);
-
-  // Get the filtered data (only the rows that match the filter)
-  const filteredRows = sourceSheet.getDataRange().getValues();
-
-  // Now, we need to copy only the required columns to the newly created report
-  const requiredColumns = [
-    1, // Host Name
-    2, // VPR
-    3, // Plugin ID
-    4, // Plugin name
-    5, // IP
-    6, // Description
-    7, // Solution
-    8, // First Discovered
-    9, // Last Observed
-    10, // Days Since First Discovered
-    11, // Days Since Last Observed
-    12, // Bus App Name
-    13, // VPR Remediation Due Date
-    14, // VPR Compliance
-    15  // Risk Type
-  ];
-
-  // Prepare the filtered data for copying
+  // Process a batch of data
+  const batchSize = 1000;  // Adjust the batch size for optimal performance (set a reasonable size based on your data)
+  const endRow = Math.min(startRow + batchSize - 1, totalRows);  // Ensure we don't exceed total rows
+  
+  const dataRange = sourceSheet.getRange(startRow, 1, endRow - startRow + 1, 52);  // Columns A to AZ (52 columns)
+  const data = dataRange.getValues();
+  
+  // Filter only necessary columns and apply the "Bus App Name" filter
   const filteredData = [];
+  const requiredColumns = [
+    0, // Host Name (Column A)
+    1, // VPR (Column B)
+    2, // Plugin ID (Column C)
+    3, // Plugin name (Column D)
+    4, // IP (Column E)
+    5, // Description (Column F)
+    6, // Solution (Column G)
+    7, // First Discovered (Column H)
+    8, // Last Observed (Column I)
+    9, // Days Since First Discovered (Column J)
+    10, // Days Since Last Observed (Column K)
+    11, // Bus App Name (Column L)
+    12, // VPR Remediation Due Date (Column M)
+    13, // VPR Compliance (Column N)
+    14  // Risk Type (Column O)
+  ];
   
-  // Loop through the rows and extract only the required columns
-  filteredData.push(filteredRows[0].filter((_, index) => requiredColumns.includes(index + 1)));  // Add header row
+  // Add headers to filteredData
+  filteredData.push(data[0].filter((_, index) => requiredColumns.includes(index)));  // Add header row
   
-  for (let i = 1; i < filteredRows.length; i++) {
-    filteredData.push(filteredRows[i].filter((_, index) => requiredColumns.includes(index + 1)));
+  // Loop through each row and filter out the required columns
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[11] === 'ABC' || row[11] === 'bca' || row[11] === 'dba' || row[11] === 'eee') {
+      filteredData.push(row.filter((_, index) => requiredColumns.includes(index)));
+    }
   }
 
   // Create a new sheet and store the filtered data
   const newSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Platops Internal Findings');
   newSheet.getRange(1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
 
-  // Store this new sheet in a specific folder (Location X)
-  const folderXId = 'YOUR_FOLDER_X_ID';  // Replace with the ID of Location X
-  const folderX = DriveApp.getFolderById(folderXId);
+  // Store the current row in script properties for the next run
+  scriptProperties.setProperty('startRow', endRow + 1);  // Move to the next batch
+
+  Logger.log(`Processed rows from ${startRow} to ${endRow}`);
   
-  const file = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
-  folderX.addFile(file);  // Add the new file to Location X
-  Logger.log('New report created and stored in Location X');
-  
-  // Optionally, remove the file from the root folder after it's added to the specific folder
-  const rootFolder = DriveApp.getRootFolder();
-  rootFolder.removeFile(file);
-  
-  Logger.log('New report has been created and stored in Location X');
+  // Re-run the function in 1 minute to continue processing the next batch
+  if (endRow < totalRows) {
+    ScriptApp.newTrigger('processLargeData')
+      .timeBased()
+      .after(1 * 60 * 1000)  // Trigger the function after 1 minute
+      .create();
+  } else {
+    Logger.log('All rows processed.');
+  }
 }
+
