@@ -28,6 +28,9 @@ function copyDataInBatches() {
     return index;
   });
 
+  // Set the headers in the Temporary sheet
+  tempSheet.getRange(1, 1, 1, requiredColumns.length).setValues([requiredColumns]);
+
   // Get the total number of rows (batch size can be adjusted)
   var totalRows = sourceSheet.getLastRow();
   var batchSize = 5000; // Number of rows per batch
@@ -70,3 +73,4 @@ function copyDataInBatches() {
   // Start processing the first batch
   processBatch();
 }
+
