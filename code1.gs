@@ -100,6 +100,10 @@ function processLargeData() {
     return;
   }
 
+  // Create the temporary Google Sheets file
+  const tempSpreadsheet = SpreadsheetApp.create("Temp Report");
+  const tempSheet = tempSpreadsheet.getSheets()[0];
+  
   // Filter only necessary columns and apply the "Bus App Name" filter
   const filteredData = [];
   
@@ -120,15 +124,21 @@ function processLargeData() {
     }
   }
 
+  // Set the filtered data into the temporary sheet
+  tempSheet.getRange(1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+
+  // Process the data in the temp sheet (this can be customized as needed)
+  Logger.log('Data successfully filtered in the temporary sheet...');
+  
   // Ensure the Platops Internal Findings sheet exists and get it
-  let platopsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Platops Internal Findings');
+  let platopsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Dashboard Sheet');
   
   // If the sheet doesn't exist, create it
   if (!platopsSheet) {
-    platopsSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Platops Internal Findings');
+    platopsSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Dashboard Sheet');
   }
   
-  // Append filtered data to the Platops Internal Findings sheet
+  // Append filtered data to the Dashboard Sheet
   if (filteredData.length > 1) {  // Ensure data exists before appending
     platopsSheet.getRange(platopsSheet.getLastRow() + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
   }
@@ -150,6 +160,11 @@ function processLargeData() {
   } else {
     Logger.log('All rows processed.');
   }
+
+  // Delete the temporary Google Sheets file after use
+  Logger.log('Deleting temporary sheet...');
+  DriveApp.getFileById(tempSpreadsheet.getId()).setTrashed(true);
+  Logger.log('Temporary sheet deleted.');
 }
 
 // Delete all existing triggers to prevent overload
@@ -159,6 +174,7 @@ function deleteTriggers() {
     ScriptApp.deleteTrigger(allTriggers[i]);
   }
 }
+
 
 
 
