@@ -94,3 +94,4 @@ function applyFilterToBusAppName(tempSheet) {
   // Apply the filter criteria to the 'Bus App Name' column
   filter.setColumnFilterCriteria(busAppNameIndex, criteria);
 }
+
