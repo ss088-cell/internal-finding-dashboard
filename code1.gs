@@ -4,7 +4,7 @@ function runWeeklyReportProcess() {
   processLargeData();  // Process the large data in batches
 }
 
-// 1. Move the old report to Location Y with timestamp
+// 1. Move the generated Platops Internal Findings report to Location Y with timestamp
 function moveOldReport() {
   const platopsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Platops Internal Findings');
   
@@ -135,5 +135,6 @@ function processLargeData() {
     Logger.log('All rows processed.');
   }
 }
+
 
 
