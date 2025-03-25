@@ -1,3 +1,46 @@
+// Main function to run weekly
+function runWeeklyReportProcess() {
+  resetStartRow();  // Reset startRow to 1 before starting the process
+  moveOldReport();  // Move the old report to Location Y
+  processLargeData();  // Process the large data in batches
+}
+
+// 1. Reset startRow to 1 before starting the process
+function resetStartRow() {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  scriptProperties.deleteProperty('startRow');  // Reset the startRow to 1
+  Logger.log("Start row reset to 1.");
+}
+
+// 2. Move the generated Platops Internal Findings report to Location Y with timestamp
+function moveOldReport() {
+  const platopsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Platops Internal Findings');
+  
+  if (!platopsSheet) {
+    Logger.log('Platops Internal Findings sheet not found!');
+    return;
+  }
+
+  const folderXId = 'YOUR_FOLDER_X_ID';  // Replace with the ID of Location X (current folder)
+  const folderX = DriveApp.getFolderById(folderXId);
+  
+  const folderYId = 'YOUR_FOLDER_Y_ID';  // Replace with the ID of Location Y (archive folder)
+  const folderY = DriveApp.getFolderById(folderYId);
+  
+  const date = new Date();
+  const timestamp = Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyyMMdd');
+  
+  const oldFile = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+  const newName = 'Platops Internal Findings_' + timestamp;
+  oldFile.setName(newName);
+  
+  // Add the file to folderY (archive folder) and remove it from folderX
+  folderY.addFile(oldFile);
+  folderX.removeFile(oldFile);  // Remove the file from Location X
+  
+  Logger.log('Report moved to Location Y with name: ' + newName);
+}
+
 // 3. Process the large data in chunks to avoid timeout
 function processLargeData() {
   const scriptProperties = PropertiesService.getScriptProperties();
