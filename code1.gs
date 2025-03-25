@@ -144,6 +144,9 @@ function processLargeData() {
 
   Logger.log(`Processed rows from ${startRow} to ${endRow}`);
   
+  // Clear existing triggers before creating new ones
+  deleteTriggers();
+
   // Re-run the function in 1 minute to continue processing the next batch
   if (endRow < totalRows) {
     ScriptApp.newTrigger('processLargeData')
@@ -152,5 +155,13 @@ function processLargeData() {
       .create();
   } else {
     Logger.log('All rows processed.');
+  }
+}
+
+// Delete all existing triggers to prevent overload
+function deleteTriggers() {
+  const allTriggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < allTriggers.length; i++) {
+    ScriptApp.deleteTrigger(allTriggers[i]);
   }
 }
