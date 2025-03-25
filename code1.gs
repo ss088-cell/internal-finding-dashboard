@@ -111,22 +111,7 @@ function processLargeData() {
     }
   }
 
-  // Create the temporary Google Sheets file
-  const tempSpreadsheet = SpreadsheetApp.create("Temp Report");
-  const tempSheet = tempSpreadsheet.getSheets()[0];
-  
-  // Set the header and filtered data in the temp sheet
-  tempSheet.getRange(1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
-
-  // Process the data in the temp sheet (this can be customized as needed)
-  Logger.log('Processing data in the temp sheet...');
-  
-  // After processing, delete the temporary Google Sheets file
-  Logger.log('Deleting temporary sheet...');
-  DriveApp.getFileById(tempSpreadsheet.getId()).setTrashed(true);
-  Logger.log('Temporary sheet deleted.');
-
-  // After processing, create and store the Platops Internal Findings report
+  // Ensure the Platops Internal Findings sheet exists and get it
   let platopsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Platops Internal Findings');
   
   // If the sheet doesn't exist, create it
@@ -165,5 +150,6 @@ function deleteTriggers() {
     ScriptApp.deleteTrigger(allTriggers[i]);
   }
 }
+
 
 
