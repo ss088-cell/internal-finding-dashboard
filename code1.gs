@@ -1,7 +1,7 @@
 // Main function to run weekly
 function runWeeklyReportProcess() {
   resetStartRow();  // Reset startRow to 1 before starting the process
-  moveOldReport();  // Move the old report to Location Y
+  moveOldReport();  // Move the old report to Location Y if it exists, and save the new one at Location X
   processLargeData();  // Process the large data in batches
 }
 
@@ -30,15 +30,24 @@ function moveOldReport() {
   const date = new Date();
   const timestamp = Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyyMMdd');
   
-  const oldFile = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
-  const newName = 'Platops Internal Findings_' + timestamp;
-  oldFile.setName(newName);
+  // Check if the Platops Internal Findings file exists at Location X
+  const existingFiles = folderX.getFilesByName('Platops Internal Findings');
+  if (existingFiles.hasNext()) {
+    const oldFile = existingFiles.next();
+    const newName = 'Platops Internal Findings_' + timestamp;
+    oldFile.setName(newName);
+    
+    // Move the old file to Location Y
+    folderY.addFile(oldFile);
+    folderX.removeFile(oldFile);  // Remove the file from Location X
+
+    Logger.log('Old report moved to Location Y with name: ' + newName);
+  }
   
-  // Add the file to folderY (archive folder) and remove it from folderX
-  folderY.addFile(oldFile);
-  folderX.removeFile(oldFile);  // Remove the file from Location X
-  
-  Logger.log('Report moved to Location Y with name: ' + newName);
+  // Ensure the new file is created and saved at Location X
+  const newFile = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+  folderX.addFile(newFile);
+  Logger.log('New report saved to Location X with name: Platops Internal Findings');
 }
 
 // 3. Process the large data in chunks to avoid timeout
@@ -150,6 +159,7 @@ function deleteTriggers() {
     ScriptApp.deleteTrigger(allTriggers[i]);
   }
 }
+
 
 
 
