@@ -64,40 +64,61 @@ function processLargeData() {
   const dataRange = sourceSheet.getRange(startRow, 1, endRow - startRow + 1, 52);  // Columns A to AZ (52 columns)
   const data = dataRange.getValues();
   
+  // Get the header row to map the column names to their indexes
+  const headerRow = sourceSheet.getRange(1, 1, 1, sourceSheet.getLastColumn()).getValues()[0];
+  
+  // Map the required column names to their respective indexes
+  const columnNames = [
+    "Host Name", "VPR", "Plugin ID", "Plugin name", "IP", "Description", "Solution",
+    "First Discovered", "Last Observed", "Days Since First Discovered", "Days Since Last Observed",
+    "Bus App Name", "VPR Remediation Due Date", "VPR Compliance", "Risk Type"
+  ];
+
+  // Create a map of column indexes based on the header row
+  const columnIndexes = {};
+  columnNames.forEach(function (columnName) {
+    const index = headerRow.indexOf(columnName);
+    if (index !== -1) {
+      columnIndexes[columnName] = index;
+    }
+  });
+
+  // Check if all columns were found
+  if (Object.keys(columnIndexes).length !== columnNames.length) {
+    Logger.log("Some required columns were not found.");
+    return;
+  }
+
   // Filter only necessary columns and apply the "Bus App Name" filter
   const filteredData = [];
-  const requiredColumns = [
-    0, // Host Name (Column A)
-    1, // VPR (Column B)
-    2, // Plugin ID (Column C)
-    3, // Plugin name (Column D)
-    4, // IP (Column E)
-    5, // Description (Column F)
-    6, // Solution (Column G)
-    7, // First Discovered (Column H)
-    8, // Last Observed (Column I)
-    9, // Days Since First Discovered (Column J)
-    10, // Days Since Last Observed (Column K)
-    11, // Bus App Name (Column L)
-    12, // VPR Remediation Due Date (Column M)
-    13, // VPR Compliance (Column N)
-    14  // Risk Type (Column O)
-  ];
   
   // Add headers to filteredData
-  filteredData.push(data[0].filter((_, index) => requiredColumns.includes(index)));  // Add header row
-  
+  filteredData.push(columnNames);  // Use the column names as headers
+
   // Loop through each row and filter out the required columns
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (row[11] === 'ABC' || row[11] === 'bca' || row[11] === 'dba' || row[11] === 'eee') {
-      filteredData.push(row.filter((_, index) => requiredColumns.includes(index)));
+    const busAppName = row[columnIndexes["Bus App Name"]];
+    
+    // Apply the filter for "Bus App Name"
+    if (busAppName === 'ABC' || busAppName === 'bca' || busAppName === 'dba' || busAppName === 'eee') {
+      const filteredRow = columnNames.map(function (colName) {
+        return row[columnIndexes[colName]]; // Extract the values for the required columns
+      });
+      filteredData.push(filteredRow);  // Add filtered row to the data
     }
   }
 
-  // Create a new sheet and store the filtered data
-  const newSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Platops Internal Findings');
-  newSheet.getRange(1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+  // Create or open the existing "Platops Internal Findings" sheet
+  let platopsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Platops Internal Findings');
+  
+  // If the sheet doesn't exist, create it
+  if (!platopsSheet) {
+    platopsSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Platops Internal Findings');
+  }
+  
+  // Append filtered data to the existing sheet
+  platopsSheet.getRange(platopsSheet.getLastRow() + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
 
   // Store the current row in script properties for the next run
   scriptProperties.setProperty('startRow', endRow + 1);  // Move to the next batch
@@ -114,4 +135,5 @@ function processLargeData() {
     Logger.log('All rows processed.');
   }
 }
+
 
