@@ -165,3 +165,4 @@ function deleteTriggers() {
     ScriptApp.deleteTrigger(allTriggers[i]);
   }
 }
+
