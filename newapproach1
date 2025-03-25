@@ -90,7 +90,7 @@ function applyFilterToBusAppName() {
   
   // Set the criteria for filtering the 'Bus App Name' column
   var criteria = SpreadsheetApp.newFilterCriteria()
-      .setVisibleValues(['aaa', 'bbb', 'ccc'])
+      .setHiddenValues(['aaa', 'bbb', 'ccc']) // Hide rows that are not aaa, bbb, or ccc
       .build();
   filter.setColumnFilterCriteria(busAppNameIndex, criteria);
 }
