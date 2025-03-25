@@ -1,10 +1,18 @@
 // Main function to run weekly
 function runWeeklyReportProcess() {
+  resetStartRow();  // Reset startRow to 1 before starting the process
   moveOldReport();  // Move the old report to Location Y
   processLargeData();  // Process the large data in batches
 }
 
-// 1. Move the generated Platops Internal Findings report to Location Y with timestamp
+// 1. Reset startRow to 1 before starting the process
+function resetStartRow() {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  scriptProperties.deleteProperty('startRow');  // Reset the startRow to 1
+  Logger.log("Start row reset to 1.");
+}
+
+// 2. Move the generated Platops Internal Findings report to Location Y with timestamp
 function moveOldReport() {
   const platopsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Platops Internal Findings');
   
@@ -26,13 +34,14 @@ function moveOldReport() {
   const newName = 'Platops Internal Findings_' + timestamp;
   oldFile.setName(newName);
   
+  // Add the file to folderY (archive folder) and remove it from folderX
   folderY.addFile(oldFile);
   folderX.removeFile(oldFile);  // Remove the file from Location X
   
   Logger.log('Report moved to Location Y with name: ' + newName);
 }
 
-// 2. Process the large data in chunks to avoid timeout
+// 3. Process the large data in chunks to avoid timeout
 function processLargeData() {
   const scriptProperties = PropertiesService.getScriptProperties();
   const sourceSheetUrl = 'https://docs.google.com/spreadsheets/d/your-spreadsheet-id/edit'; // Replace with your Google Sheet URL
@@ -48,14 +57,7 @@ function processLargeData() {
   const totalRows = sourceSheet.getLastRow();
   
   // Get the current row to start from (stored in properties)
-  let startRow = parseInt(scriptProperties.getProperty('startRow') || '1');
-  
-  // If we are at the last batch, reset the startRow to 1
-  if (startRow > totalRows) {
-    scriptProperties.deleteProperty('startRow');
-    Logger.log('Process completed');
-    return;
-  }
+  let startRow = parseInt(scriptProperties.getProperty('startRow') || '1');  // Starts from row 1
 
   // Process a batch of data
   const batchSize = 1000;  // Adjust the batch size for optimal performance (set a reasonable size based on your data)
@@ -109,7 +111,22 @@ function processLargeData() {
     }
   }
 
-  // Create or open the existing "Platops Internal Findings" sheet
+  // Create the temporary Google Sheets file
+  const tempSpreadsheet = SpreadsheetApp.create("Temp Report");
+  const tempSheet = tempSpreadsheet.getSheets()[0];
+  
+  // Set the header and filtered data in the temp sheet
+  tempSheet.getRange(1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+
+  // Process the data in the temp sheet (this can be customized as needed)
+  Logger.log('Processing data in the temp sheet...');
+  
+  // After processing, delete the temporary Google Sheets file
+  Logger.log('Deleting temporary sheet...');
+  DriveApp.getFileById(tempSpreadsheet.getId()).setTrashed(true);
+  Logger.log('Temporary sheet deleted.');
+
+  // After processing, create and store the Platops Internal Findings report
   let platopsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Platops Internal Findings');
   
   // If the sheet doesn't exist, create it
@@ -117,8 +134,10 @@ function processLargeData() {
     platopsSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Platops Internal Findings');
   }
   
-  // Append filtered data to the existing sheet
-  platopsSheet.getRange(platopsSheet.getLastRow() + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+  // Append filtered data to the Platops Internal Findings sheet
+  if (filteredData.length > 1) {  // Ensure data exists before appending
+    platopsSheet.getRange(platopsSheet.getLastRow() + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+  }
 
   // Store the current row in script properties for the next run
   scriptProperties.setProperty('startRow', endRow + 1);  // Move to the next batch
@@ -135,6 +154,3 @@ function processLargeData() {
     Logger.log('All rows processed.');
   }
 }
-
-
-
