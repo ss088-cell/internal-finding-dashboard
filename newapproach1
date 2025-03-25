@@ -86,13 +86,14 @@ function applyFilterToBusAppName(tempSheet) {
   var range = tempSheet.getRange(1, 1, tempSheet.getLastRow(), tempSheet.getLastColumn());
   var filter = range.createFilter();
 
-  // Set the criteria for filtering the 'Bus App Name' column to show only 'aaa', 'bbb', 'ccc'
+  // Set the criteria for filtering the 'Bus App Name' column to hide rows that are not aaa, bbb, or ccc
   var criteria = SpreadsheetApp.newFilterCriteria()
-      .setVisibleValues(['aaa', 'bbb', 'ccc']) // Show only rows that are aaa, bbb, or ccc
+      .setHiddenValues(['aaa', 'bbb', 'ccc']) // Hide rows that are not aaa, bbb, or ccc
       .build();
   
   // Apply the filter criteria to the 'Bus App Name' column
   filter.setColumnFilterCriteria(busAppNameIndex, criteria);
 }
+
 
 
