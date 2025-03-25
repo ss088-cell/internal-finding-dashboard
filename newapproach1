@@ -4,7 +4,7 @@ function copyDataInBatches() {
   var sourceSpreadsheet = SpreadsheetApp.openById(sourceSheetId);
   var sourceSheet = sourceSpreadsheet.getSheetByName('Detail Data');
   
-  // Create new Temporary Google Sheet (if not already exists)
+  // Create a new Temporary Google Sheet (standalone)
   var temporarySpreadsheet = SpreadsheetApp.create('Temporary');
   var tempSheet = temporarySpreadsheet.getActiveSheet();
   
@@ -62,7 +62,7 @@ function copyDataInBatches() {
       processBatch(); // Recurse to the next batch
     } else {
       // Once all data is processed, apply filter on the 'Bus App Name' column
-      applyFilterToBusAppName();
+      applyFilterToBusAppName(tempSheet);
       
       // Once all data is processed, log the link to the new Temporary Sheet
       var sheetUrl = temporarySpreadsheet.getUrl();
@@ -77,9 +77,7 @@ function copyDataInBatches() {
   processBatch();
 }
 
-function applyFilterToBusAppName() {
-  var tempSheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  
+function applyFilterToBusAppName(tempSheet) {
   // Get the 'Bus App Name' column index (from header row)
   var header = tempSheet.getRange(1, 1, 1, tempSheet.getLastColumn()).getValues()[0];
   var busAppNameIndex = header.indexOf("Bus App Name") + 1; // Column index for 'Bus App Name' (1-based)
@@ -87,10 +85,11 @@ function applyFilterToBusAppName() {
   // Apply filter to the 'Bus App Name' column
   var range = tempSheet.getRange(1, 1, tempSheet.getLastRow(), tempSheet.getLastColumn());
   var filter = range.createFilter();
-  
+
   // Set the criteria for filtering the 'Bus App Name' column
   var criteria = SpreadsheetApp.newFilterCriteria()
       .setHiddenValues(['aaa', 'bbb', 'ccc']) // Hide rows that are not aaa, bbb, or ccc
       .build();
   filter.setColumnFilterCriteria(busAppNameIndex, criteria);
 }
+
