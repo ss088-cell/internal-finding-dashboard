@@ -31,11 +31,7 @@ function copyDataInBatches() {
   // Set the headers in the Temporary sheet
   tempSheet.getRange(1, 1, 1, requiredColumns.length).setValues([requiredColumns]);
 
-  // List of application names (replace with your actual app names)
-  var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
-                  "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
-
-  // Get the total number of rows
+  // Get the total number of rows (batch size can be adjusted)
   var totalRows = sourceSheet.getLastRow();
   var batchSize = 5000; // Number of rows per batch
   var startRow = parseInt(PropertiesService.getScriptProperties().getProperty('startRow') || 2);  // Default to row 2
@@ -46,6 +42,9 @@ function copyDataInBatches() {
   var data = dataRange.getValues();
   
   // Filter out rows where 'Bus App Name' is not in the specified list
+  var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
+                  "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
+  
   var filteredData = data.filter(function(row) {
     var busAppName = row[header.indexOf("Bus App Name")]; // Get the "Bus App Name"
     return appNames.includes(busAppName); // Keep rows where "Bus App Name" is in the appNames list
