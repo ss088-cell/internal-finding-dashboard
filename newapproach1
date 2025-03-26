@@ -88,16 +88,21 @@ function applyFilterToBusAppName(tempSheet) {
 
   // Apply filter to the 'Bus App Name' column
   var range = tempSheet.getRange(1, 1, tempSheet.getLastRow(), tempSheet.getLastColumn());
-  var filter = range.createFilter();
+  var filter = range.getFilter();
+  
+  // If the filter already exists, remove it
+  if (filter) {
+    filter.remove();
+  }
 
-  // Deselect all values first
-  filter.remove();
+  // Recreate the filter
+  filter = range.createFilter();
 
-  // Recreate the filter to apply for only the 18 selected applications
+  // Set the criteria for filtering the 'Bus App Name' column to show only the app names from the appNames array
   var criteria = SpreadsheetApp.newFilterCriteria()
       .setVisibleValues(appNames) // Show only rows that are in the appNames list
       .build();
-
+  
   // Apply the filter criteria to the 'Bus App Name' column
   filter.setColumnFilterCriteria(busAppNameIndex, criteria);
 }
