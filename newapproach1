@@ -31,61 +31,80 @@ function copyDataInBatches() {
   // Set the headers in the Temporary sheet
   tempSheet.getRange(1, 1, 1, requiredColumns.length).setValues([requiredColumns]);
 
+  // Get the total number of rows (batch size can be adjusted)
+  var totalRows = sourceSheet.getLastRow();
+  var batchSize = 5000; // Number of rows per batch
+  var startRow = 2; // Start from the second row (skipping the header row)
+  var endRow = Math.min(startRow + batchSize - 1, totalRows);
+  
+  // Process data in batches
+  function processBatch() {
+    var dataRange = sourceSheet.getRange(startRow, 1, endRow - startRow + 1, sourceSheet.getLastColumn());
+    var data = dataRange.getValues();
+    
+    // Extract the required columns using the column indexes
+    var extractedData = data.map(function(row) {
+      return columnIndexes.map(function(index) {
+        return row[index];
+      });
+    });
+
+    // Copy the extracted data to the Temporary Sheet
+    tempSheet.getRange(tempSheet.getLastRow() + 1, 1, extractedData.length, extractedData[0].length).setValues(extractedData);
+
+    // Update start and end rows for the next batch
+    startRow = endRow + 1;
+    endRow = Math.min(startRow + batchSize - 1, totalRows);
+
+    // If there's more data to process, rerun the function after 40 seconds
+    if (startRow <= totalRows) {
+      Utilities.sleep(40000);  // Wait for 40 seconds
+      processBatch(); // Recurse to the next batch
+    } else {
+      // Once all data is processed, apply filter on the 'Bus App Name' column
+      applyFilterToBusAppName(tempSheet);
+      
+      // Once all data is processed, log the link to the new Temporary Sheet
+      var sheetUrl = temporarySpreadsheet.getUrl();
+      Logger.log('Temporary Sheet Link: ' + sheetUrl);
+      
+      // Optionally, send the link via email
+      // MailApp.sendEmail("your-email@example.com", "Data Copy Complete", "The data copy is complete. Here is the link to the Temporary Sheet: " + sheetUrl);
+    }
+  }
+
+  // Start processing the first batch
+  processBatch();
+}
+
+function applyFilterToBusAppName(tempSheet) {
+  // Get the 'Bus App Name' column index (from header row)
+  var header = tempSheet.getRange(1, 1, 1, tempSheet.getLastColumn()).getValues()[0];
+  var busAppNameIndex = header.indexOf("Bus App Name") + 1; // Column index for 'Bus App Name' (1-based)
+
   // List of application names (replace with your actual app names)
   var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
                   "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
 
-  // Get the total number of rows
-  var totalRows = sourceSheet.getLastRow();
-  var batchSize = 500;  // Number of rows per batch (adjust this to fit within execution time limit)
-
-  // Track the row to start from
-  var startRow = parseInt(PropertiesService.getScriptProperties().getProperty('startRow') || 2);
-  var endRow = Math.min(startRow + batchSize - 1, totalRows);
-
-  // Process data in batches
-  var data = sourceSheet.getRange(startRow, 1, endRow - startRow + 1, sourceSheet.getLastColumn()).getValues();
-
-  // Loop through each row and check if it matches the desired applications
-  var rowsToAppend = [];
-  for (var i = 0; i < data.length; i++) {
-    var busAppName = data[i][header.indexOf("Bus App Name")]; // Get the "Bus App Name"
-    
-    // If the Bus App Name is in the list of applications, add this row to rowsToAppend
-    if (appNames.includes(busAppName)) {
-      var row = [];
-      for (var j = 0; j < columnIndexes.length; j++) {
-        row.push(data[i][columnIndexes[j]]);
-      }
-      rowsToAppend.push(row); // Store the row to append later
-    }
+  // Apply filter to the 'Bus App Name' column
+  var range = tempSheet.getRange(1, 1, tempSheet.getLastRow(), tempSheet.getLastColumn());
+  var filter = range.getFilter();
+  
+  // If the filter already exists, remove it
+  if (filter) {
+    filter.remove();
   }
 
-  // Append rows to the new sheet
-  if (rowsToAppend.length > 0) {
-    tempSheet.getRange(tempSheet.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
-  }
+  // Recreate the filter
+  filter = range.createFilter();
 
-  // Update the start row for the next batch
-  PropertiesService.getScriptProperties().setProperty('startRow', endRow + 1);
-
-  // If we haven't finished processing all rows, set a trigger to continue
-  if (endRow < totalRows) {
-    // Set a time-driven trigger to continue processing after a short delay
-    ScriptApp.newTrigger('copyDataInBatches')
-      .timeBased()
-      .after(1000)  // 1 second delay before running the next batch
-      .create();
-  } else {
-    // All data is processed, log the link to the new Temporary Sheet
-    var sheetUrl = temporarySpreadsheet.getUrl();
-    Logger.log('Temporary Sheet Link: ' + sheetUrl);
-
-    // Clear the startRow property when finished
-    PropertiesService.getScriptProperties().deleteProperty('startRow');
-    
-    // Optionally, send the link via email
-    // MailApp.sendEmail("your-email@example.com", "Data Copy Complete", "The data copy is complete. Here is the link to the Temporary Sheet: " + sheetUrl);
-  }
+  // Set the criteria for filtering the 'Bus App Name' column to hide rows that are NOT in the appNames array
+  var criteria = SpreadsheetApp.newFilterCriteria()
+      .setHiddenValues(appNames) // Hide rows that are not in the appNames list
+      .build();
+  
+  // Apply the filter criteria to the 'Bus App Name' column
+  filter.setColumnFilterCriteria(busAppNameIndex, criteria);
 }
+
 
