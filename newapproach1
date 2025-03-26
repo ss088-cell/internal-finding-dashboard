@@ -86,25 +86,14 @@ function applyFilterToBusAppName(tempSheet) {
   var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
                   "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
 
-  // Apply filter to the 'Bus App Name' column
-  var range = tempSheet.getRange(1, 1, tempSheet.getLastRow(), tempSheet.getLastColumn());
-  var filter = range.getFilter();
-  
-  // If the filter already exists, remove it
-  if (filter) {
-    filter.remove();
+  // Loop through all rows and hide rows that do not match the app names
+  var lastRow = tempSheet.getLastRow();
+  for (var i = 2; i <= lastRow; i++) { // Start from row 2 (skipping header)
+    var busAppName = tempSheet.getRange(i, busAppNameIndex).getValue();
+    
+    // If the Bus App Name does not match any of the selected applications, hide the row
+    if (!appNames.includes(busAppName)) {
+      tempSheet.hideRows(i);
+    }
   }
-
-  // Recreate the filter
-  filter = range.createFilter();
-
-  // Set the criteria for filtering the 'Bus App Name' column to hide rows that are NOT in the appNames array
-  var criteria = SpreadsheetApp.newFilterCriteria()
-      .setHiddenValues(appNames) // Hide rows that are not in the appNames list
-      .build();
-  
-  // Apply the filter criteria to the 'Bus App Name' column
-  filter.setColumnFilterCriteria(busAppNameIndex, criteria);
 }
-
-
