@@ -98,9 +98,9 @@ function applyFilterToBusAppName(tempSheet) {
   // Recreate the filter
   filter = range.createFilter();
 
-  // Set the criteria for filtering the 'Bus App Name' column to show only the app names from the appNames array
+  // Set the criteria for filtering the 'Bus App Name' column to hide rows that are NOT in the appNames array
   var criteria = SpreadsheetApp.newFilterCriteria()
-      .setVisibleValues(appNames) // Show only rows that are in the appNames list
+      .setHiddenValues(appNames) // Hide rows that are not in the appNames list
       .build();
   
   // Apply the filter criteria to the 'Bus App Name' column
