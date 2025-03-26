@@ -31,31 +31,61 @@ function copyDataInBatches() {
   // Set the headers in the Temporary sheet
   tempSheet.getRange(1, 1, 1, requiredColumns.length).setValues([requiredColumns]);
 
-  // Get the total number of rows
-  var totalRows = sourceSheet.getLastRow();
-
   // List of application names (replace with your actual app names)
   var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
                   "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
 
+  // Get the total number of rows
+  var totalRows = sourceSheet.getLastRow();
+  var batchSize = 500;  // Number of rows per batch (adjust this to fit within execution time limit)
+
+  // Track the row to start from
+  var startRow = parseInt(PropertiesService.getScriptProperties().getProperty('startRow') || 2);
+  var endRow = Math.min(startRow + batchSize - 1, totalRows);
+
+  // Process data in batches
+  var data = sourceSheet.getRange(startRow, 1, endRow - startRow + 1, sourceSheet.getLastColumn()).getValues();
+
   // Loop through each row and check if it matches the desired applications
-  for (var i = 2; i <= totalRows; i++) { // Start from row 2 (skipping the header)
-    var busAppName = sourceSheet.getRange(i, header.indexOf("Bus App Name") + 1).getValue();
+  var rowsToAppend = [];
+  for (var i = 0; i < data.length; i++) {
+    var busAppName = data[i][header.indexOf("Bus App Name")]; // Get the "Bus App Name"
     
-    // If the Bus App Name is in the list of applications, copy this row to the new sheet
+    // If the Bus App Name is in the list of applications, add this row to rowsToAppend
     if (appNames.includes(busAppName)) {
       var row = [];
       for (var j = 0; j < columnIndexes.length; j++) {
-        row.push(sourceSheet.getRange(i, columnIndexes[j] + 1).getValue());
+        row.push(data[i][columnIndexes[j]]);
       }
-      tempSheet.appendRow(row); // Append the row to the new sheet
+      rowsToAppend.push(row); // Store the row to append later
     }
   }
 
-  // Once all data is processed, log the link to the new Temporary Sheet
-  var sheetUrl = temporarySpreadsheet.getUrl();
-  Logger.log('Temporary Sheet Link: ' + sheetUrl);
-  
-  // Optionally, send the link via email
-  // MailApp.sendEmail("your-email@example.com", "Data Copy Complete", "The data copy is complete. Here is the link to the Temporary Sheet: " + sheetUrl);
+  // Append rows to the new sheet
+  if (rowsToAppend.length > 0) {
+    tempSheet.getRange(tempSheet.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
+  }
+
+  // Update the start row for the next batch
+  PropertiesService.getScriptProperties().setProperty('startRow', endRow + 1);
+
+  // If we haven't finished processing all rows, set a trigger to continue
+  if (endRow < totalRows) {
+    // Set a time-driven trigger to continue processing after a short delay
+    ScriptApp.newTrigger('copyDataInBatches')
+      .timeBased()
+      .after(1000)  // 1 second delay before running the next batch
+      .create();
+  } else {
+    // All data is processed, log the link to the new Temporary Sheet
+    var sheetUrl = temporarySpreadsheet.getUrl();
+    Logger.log('Temporary Sheet Link: ' + sheetUrl);
+
+    // Clear the startRow property when finished
+    PropertiesService.getScriptProperties().deleteProperty('startRow');
+    
+    // Optionally, send the link via email
+    // MailApp.sendEmail("your-email@example.com", "Data Copy Complete", "The data copy is complete. Here is the link to the Temporary Sheet: " + sheetUrl);
+  }
 }
+
