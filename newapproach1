@@ -31,54 +31,55 @@ function copyDataInBatches() {
   // Set the headers in the Temporary sheet
   tempSheet.getRange(1, 1, 1, requiredColumns.length).setValues([requiredColumns]);
 
-  // Get the total number of rows (batch size can be adjusted)
+  // List of application names (replace with your actual app names)
+  var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
+                  "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
+
+  // Get the total number of rows
   var totalRows = sourceSheet.getLastRow();
   var batchSize = 5000; // Number of rows per batch
-  var startRow = 2; // Start from the second row (skipping the header row)
+  var startRow = parseInt(PropertiesService.getScriptProperties().getProperty('startRow') || 2);  // Default to row 2
   var endRow = Math.min(startRow + batchSize - 1, totalRows);
   
   // Process data in batches
-  function processBatch() {
-    var dataRange = sourceSheet.getRange(startRow, 1, endRow - startRow + 1, sourceSheet.getLastColumn());
-    var data = dataRange.getValues();
-    
-    // Filter out rows where 'Bus App Name' is not in the specified list
-    var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
-                    "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
-    
-    var filteredData = data.filter(function(row) {
-      var busAppName = row[header.indexOf("Bus App Name")]; // Get the "Bus App Name"
-      return appNames.includes(busAppName); // Keep rows where "Bus App Name" is in the appNames list
-    }).map(function(row) {
-      // Extract only the required columns using column indexes
-      return columnIndexes.map(function(index) {
-        return row[index];
-      });
+  var dataRange = sourceSheet.getRange(startRow, 1, endRow - startRow + 1, sourceSheet.getLastColumn());
+  var data = dataRange.getValues();
+  
+  // Filter out rows where 'Bus App Name' is not in the specified list
+  var filteredData = data.filter(function(row) {
+    var busAppName = row[header.indexOf("Bus App Name")]; // Get the "Bus App Name"
+    return appNames.includes(busAppName); // Keep rows where "Bus App Name" is in the appNames list
+  }).map(function(row) {
+    // Extract only the required columns using column indexes
+    return columnIndexes.map(function(index) {
+      return row[index];
     });
+  });
 
-    // If there are any filtered rows, append them to the Temporary Sheet
-    if (filteredData.length > 0) {
-      tempSheet.getRange(tempSheet.getLastRow() + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
-    }
-
-    // Update start and end rows for the next batch
-    startRow = endRow + 1;
-    endRow = Math.min(startRow + batchSize - 1, totalRows);
-
-    // If there's more data to process, rerun the function after 40 seconds
-    if (startRow <= totalRows) {
-      Utilities.sleep(40000);  // Wait for 40 seconds
-      processBatch(); // Recurse to the next batch
-    } else {
-      // Once all data is processed, log the link to the new Temporary Sheet
-      var sheetUrl = temporarySpreadsheet.getUrl();
-      Logger.log('Temporary Sheet Link: ' + sheetUrl);
-      
-      // Optionally, send the link via email
-      // MailApp.sendEmail("your-email@example.com", "Data Copy Complete", "The data copy is complete. Here is the link to the Temporary Sheet: " + sheetUrl);
-    }
+  // If there are any filtered rows, append them to the Temporary Sheet
+  if (filteredData.length > 0) {
+    tempSheet.getRange(tempSheet.getLastRow() + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
   }
 
-  // Start processing the first batch
-  processBatch();
+  // Update the start row for the next batch
+  PropertiesService.getScriptProperties().setProperty('startRow', endRow + 1);
+
+  // If there's more data to process, set a trigger to continue processing
+  if (endRow < totalRows) {
+    // Set a time-driven trigger to continue processing after a short delay
+    ScriptApp.newTrigger('copyDataInBatches')
+      .timeBased()
+      .after(1000)  // 1 second delay before running the next batch
+      .create();
+  } else {
+    // All data is processed, log the link to the new Temporary Sheet
+    var sheetUrl = temporarySpreadsheet.getUrl();
+    Logger.log('Temporary Sheet Link: ' + sheetUrl);
+    
+    // Optionally, send the link via email
+    // MailApp.sendEmail("your-email@example.com", "Data Copy Complete", "The data copy is complete. Here is the link to the Temporary Sheet: " + sheetUrl);
+    
+    // Clear the startRow property when finished
+    PropertiesService.getScriptProperties().deleteProperty('startRow');
+  }
 }
