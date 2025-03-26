@@ -42,15 +42,24 @@ function copyDataInBatches() {
     var dataRange = sourceSheet.getRange(startRow, 1, endRow - startRow + 1, sourceSheet.getLastColumn());
     var data = dataRange.getValues();
     
-    // Extract the required columns using the column indexes
-    var extractedData = data.map(function(row) {
+    // Filter out rows where 'Bus App Name' is not in the specified list
+    var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
+                    "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
+    
+    var filteredData = data.filter(function(row) {
+      var busAppName = row[header.indexOf("Bus App Name")]; // Get the "Bus App Name"
+      return appNames.includes(busAppName); // Keep rows where "Bus App Name" is in the appNames list
+    }).map(function(row) {
+      // Extract only the required columns using column indexes
       return columnIndexes.map(function(index) {
         return row[index];
       });
     });
 
-    // Copy the extracted data to the Temporary Sheet
-    tempSheet.getRange(tempSheet.getLastRow() + 1, 1, extractedData.length, extractedData[0].length).setValues(extractedData);
+    // If there are any filtered rows, append them to the Temporary Sheet
+    if (filteredData.length > 0) {
+      tempSheet.getRange(tempSheet.getLastRow() + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+    }
 
     // Update start and end rows for the next batch
     startRow = endRow + 1;
@@ -61,9 +70,6 @@ function copyDataInBatches() {
       Utilities.sleep(40000);  // Wait for 40 seconds
       processBatch(); // Recurse to the next batch
     } else {
-      // Once all data is processed, apply filter on the 'Bus App Name' column
-      applyFilterToBusAppName(tempSheet);
-      
       // Once all data is processed, log the link to the new Temporary Sheet
       var sheetUrl = temporarySpreadsheet.getUrl();
       Logger.log('Temporary Sheet Link: ' + sheetUrl);
@@ -75,25 +81,4 @@ function copyDataInBatches() {
 
   // Start processing the first batch
   processBatch();
-}
-
-function applyFilterToBusAppName(tempSheet) {
-  // Get the 'Bus App Name' column index (from header row)
-  var header = tempSheet.getRange(1, 1, 1, tempSheet.getLastColumn()).getValues()[0];
-  var busAppNameIndex = header.indexOf("Bus App Name") + 1; // Column index for 'Bus App Name' (1-based)
-
-  // List of application names (replace with your actual app names)
-  var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
-                  "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
-
-  // Loop through all rows and hide rows that do not match the app names
-  var lastRow = tempSheet.getLastRow();
-  for (var i = 2; i <= lastRow; i++) { // Start from row 2 (skipping header)
-    var busAppName = tempSheet.getRange(i, busAppNameIndex).getValue();
-    
-    // If the Bus App Name does not match any of the selected applications, hide the row
-    if (!appNames.includes(busAppName)) {
-      tempSheet.hideRows(i);
-    }
-  }
 }
