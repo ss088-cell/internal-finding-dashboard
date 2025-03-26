@@ -82,17 +82,19 @@ function applyFilterToBusAppName(tempSheet) {
   var header = tempSheet.getRange(1, 1, 1, tempSheet.getLastColumn()).getValues()[0];
   var busAppNameIndex = header.indexOf("Bus App Name") + 1; // Column index for 'Bus App Name' (1-based)
 
+  // List of application names (update with your actual app names)
+  var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
+                  "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
+
   // Apply filter to the 'Bus App Name' column
   var range = tempSheet.getRange(1, 1, tempSheet.getLastRow(), tempSheet.getLastColumn());
   var filter = range.createFilter();
 
-  // Set the criteria for filtering the 'Bus App Name' column to hide rows that are not aaa, bbb, or ccc
+  // Set the criteria for filtering the 'Bus App Name' column to hide rows that are not in the list of app names
   var criteria = SpreadsheetApp.newFilterCriteria()
-      .setHiddenValues(['aaa', 'bbb', 'ccc']) // Hide rows that are not aaa, bbb, or ccc
+      .setHiddenValues(appNames) // Hide rows that are not in the appNames list
       .build();
   
   // Apply the filter criteria to the 'Bus App Name' column
   filter.setColumnFilterCriteria(busAppNameIndex, criteria);
 }
-
-
