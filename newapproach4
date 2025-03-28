@@ -158,7 +158,11 @@ function generateVPRCounts() {
   var vprIndex = header.indexOf("VPR");
   var locationIndex = header.indexOf("Location");
   var busAppNameIndex = header.indexOf("Bus App Name");
-  
+
+  // Log the header and column indices for debugging
+  Logger.log("Header: " + header);
+  Logger.log("VPR Index: " + vprIndex + ", Location Index: " + locationIndex + ", Bus App Name Index: " + busAppNameIndex);
+
   // Prepare the "Counts" sheet (if it doesn't already exist, create it)
   var countsSheet = fixedSpreadsheet.getSheetByName('Counts');
   if (!countsSheet) {
@@ -190,6 +194,9 @@ function generateVPRCounts() {
     var appName = data[i][busAppNameIndex];
     var vpr = data[i][vprIndex];
 
+    // Log the values being processed for debugging
+    Logger.log("Row " + i + " - Location: " + location + ", App: " + appName + ", VPR: " + vpr);
+
     if (!locations.includes(location) || !appNames.includes(appName)) {
       continue; // Skip if the location or app is not in the predefined lists
     }
@@ -213,6 +220,9 @@ function generateVPRCounts() {
       counts[location][appName][vpr]++;
     }
   }
+
+  // Log the final counts object for debugging
+  Logger.log("Counts: " + JSON.stringify(counts));
 
   // Write the counts to the "Counts" sheet
   var row = 2;
