@@ -20,7 +20,8 @@ function copyDataInBatches() {
     
     // New columns added (14 more columns)
     "Column1", "Column2", "Column3", "Column4", "Column5", "Column6", "Column7", "Column8", 
-    "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Issue Description / PM #"
+    "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Issue Description / PM #", 
+    "Unique Identifier w Repository & Port"
   ];
 
   // Find the indexes of the required columns in the header
@@ -92,6 +93,7 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
   var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
   var sheet1 = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where data is pasted
   var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data'); // The sheet where last week's data is stored
+  var countsSheet = fixedSpreadsheet.getSheetByName('Counts'); // The sheet where counts are stored
   
   var currentDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
   var newSheetName = "data_" + currentDate;
@@ -149,21 +151,23 @@ function generateVPRCounts() {
   var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
   var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
   var dataSheet = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where your data is
+  var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data'); // The sheet where last week's data is stored
   
   // Retrieve the data range from the "Detail Data" sheet
   var data = dataSheet.getDataRange().getValues();
   
-  // Get column indexes for VPR, Location, Bus App Name, Issue Description / PM #, and Risk Type
+  // Get column indexes for VPR, Location, Bus App Name, Issue Description / PM #, and Unique Identifier
   var header = data[0];
   var vprIndex = header.indexOf("VPR");
   var locationIndex = header.indexOf("Location");
   var busAppNameIndex = header.indexOf("Bus App Name");
   var issueDescriptionIndex = header.indexOf("Issue Description / PM #");
   var riskTypeIndex = header.indexOf("Risk Type");
+  var uniqueIdentifierIndex = header.indexOf("Unique Identifier w Repository & Port");
 
   // Log the header and column indices for debugging
   Logger.log("Header: " + header);
-  Logger.log("VPR Index: " + vprIndex + ", Location Index: " + locationIndex + ", Bus App Name Index: " + busAppNameIndex + ", Issue Description Index: " + issueDescriptionIndex + ", Risk Type Index: " + riskTypeIndex);
+  Logger.log("VPR Index: " + vprIndex + ", Location Index: " + locationIndex + ", Bus App Name Index: " + busAppNameIndex + ", Issue Description Index: " + issueDescriptionIndex + ", Risk Type Index: " + riskTypeIndex + ", Unique Identifier Index: " + uniqueIdentifierIndex);
 
   // Prepare the "Counts" sheet (if it doesn't already exist, create it)
   var countsSheet = fixedSpreadsheet.getSheetByName('Counts');
@@ -184,6 +188,7 @@ function generateVPRCounts() {
   countsSheet.getRange(1, 8).setValue("False Positive"); // Added new column for False Positive
   countsSheet.getRange(1, 9).setValue("Within Tolerance"); // New column for Within Tolerance
   countsSheet.getRange(1, 10).setValue("Aged / Risk Treatment Plan"); // New column for Aged / Risk Treatment Plan
+  countsSheet.getRange(1, 11).setValue("Patched"); // New column for Patched count
   
   // Define the VPR values and Locations
   var vprValues = ["Critical", "High", "Medium", "Low", "Info"];
@@ -193,6 +198,12 @@ function generateVPRCounts() {
   // Initialize a counter object to store the counts
   var counts = {};
 
+  // Get the last week's data
+  var lastWeekData = lastWeekDataSheet.getDataRange().getValues();
+  var lastWeekIdentifiers = lastWeekData.map(function(row) {
+    return row[uniqueIdentifierIndex]; // Get the unique identifiers from Last Week Data
+  });
+
   // Loop through the data and count occurrences of each combination
   for (var i = 1; i < data.length; i++) {
     var location = data[i][locationIndex];
@@ -200,6 +211,7 @@ function generateVPRCounts() {
     var vpr = data[i][vprIndex];
     var issueDescription = data[i][issueDescriptionIndex];
     var riskType = data[i][riskTypeIndex];
+    var uniqueIdentifier = data[i][uniqueIdentifierIndex];
 
     // Log the values being processed for debugging
     Logger.log("Row " + i + " - Location: " + location + ", App: " + appName + ", VPR: " + vpr + ", Issue Description: " + issueDescription + ", Risk Type: " + riskType);
@@ -219,9 +231,10 @@ function generateVPRCounts() {
         "Medium": 0,
         "Low": 0,
         "Info": 0,
-        "False Positive": 0, // Added counter for False Positive
-        "Within Tolerance": 0, // Added counter for Within Tolerance
-        "Aged / Risk Treatment Plan": 0 // Added counter for Aged / Risk Treatment Plan
+        "False Positive": 0,
+        "Within Tolerance": 0,
+        "Aged / Risk Treatment Plan": 0,
+        "Patched": 0 // Added counter for Patched
       };
     }
 
@@ -244,6 +257,11 @@ function generateVPRCounts() {
     if (riskType === "Aged" || riskType === "Risk Treatment Plan") {
       counts[location][appName]["Aged / Risk Treatment Plan"]++;
     }
+
+    // Count Patched (if the unique identifier from last week's data is missing)
+    if (lastWeekIdentifiers.indexOf(uniqueIdentifier) === -1) {
+      counts[location][appName]["Patched"]++;
+    }
   }
 
   // Log the final counts object for debugging
@@ -259,13 +277,14 @@ function generateVPRCounts() {
                       counts[loc][app]["Medium"], 
                       counts[loc][app]["Low"], 
                       counts[loc][app]["Info"], 
-                      counts[loc][app]["False Positive"], // Added False Positive count
-                      counts[loc][app]["Within Tolerance"], // Added Within Tolerance count
-                      counts[loc][app]["Aged / Risk Treatment Plan"]]; // Added Aged / Risk Treatment Plan count
+                      counts[loc][app]["False Positive"], 
+                      counts[loc][app]["Within Tolerance"], 
+                      counts[loc][app]["Aged / Risk Treatment Plan"],
+                      counts[loc][app]["Patched"]]; // Added Patched count
       countsSheet.getRange(row, 1, 1, countRow.length).setValues([countRow]);
       row++;
     }
   }
 
-  Logger.log('VPR counts, False Positive, Within Tolerance and Aged/Risk Treatment Plan generated and added to the "Counts" sheet.');
+  Logger.log('VPR counts, False Positive, Within Tolerance, Aged/Risk Treatment Plan, and Patched generated and added to the "Counts" sheet.');
 }
