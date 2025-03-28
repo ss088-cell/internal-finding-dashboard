@@ -20,7 +20,7 @@ function copyDataInBatches() {
     
     // New columns added (14 more columns)
     "Column1", "Column2", "Column3", "Column4", "Column5", "Column6", "Column7", "Column8", 
-    "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Issue Description"
+    "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Issue Description / PM #"
   ];
 
   // Find the indexes of the required columns in the header
@@ -153,16 +153,17 @@ function generateVPRCounts() {
   // Retrieve the data range from the "Detail Data" sheet
   var data = dataSheet.getDataRange().getValues();
   
-  // Get column indexes for VPR, Location, Bus App Name, and Issue Description
+  // Get column indexes for VPR, Location, Bus App Name, Issue Description / PM #, and Risk Type
   var header = data[0];
   var vprIndex = header.indexOf("VPR");
   var locationIndex = header.indexOf("Location");
   var busAppNameIndex = header.indexOf("Bus App Name");
-  var issueDescriptionIndex = header.indexOf("Issue Description");
+  var issueDescriptionIndex = header.indexOf("Issue Description / PM #");
+  var riskTypeIndex = header.indexOf("Risk Type");
 
   // Log the header and column indices for debugging
   Logger.log("Header: " + header);
-  Logger.log("VPR Index: " + vprIndex + ", Location Index: " + locationIndex + ", Bus App Name Index: " + busAppNameIndex + ", Issue Description Index: " + issueDescriptionIndex);
+  Logger.log("VPR Index: " + vprIndex + ", Location Index: " + locationIndex + ", Bus App Name Index: " + busAppNameIndex + ", Issue Description Index: " + issueDescriptionIndex + ", Risk Type Index: " + riskTypeIndex);
 
   // Prepare the "Counts" sheet (if it doesn't already exist, create it)
   var countsSheet = fixedSpreadsheet.getSheetByName('Counts');
@@ -181,6 +182,8 @@ function generateVPRCounts() {
   countsSheet.getRange(1, 6).setValue("Low");
   countsSheet.getRange(1, 7).setValue("Info");
   countsSheet.getRange(1, 8).setValue("False Positive"); // Added new column for False Positive
+  countsSheet.getRange(1, 9).setValue("Within Tolerance"); // New column for Within Tolerance
+  countsSheet.getRange(1, 10).setValue("Aged / Risk Treatment Plan"); // New column for Aged / Risk Treatment Plan
   
   // Define the VPR values and Locations
   var vprValues = ["Critical", "High", "Medium", "Low", "Info"];
@@ -196,9 +199,10 @@ function generateVPRCounts() {
     var appName = data[i][busAppNameIndex];
     var vpr = data[i][vprIndex];
     var issueDescription = data[i][issueDescriptionIndex];
+    var riskType = data[i][riskTypeIndex];
 
     // Log the values being processed for debugging
-    Logger.log("Row " + i + " - Location: " + location + ", App: " + appName + ", VPR: " + vpr + ", Issue Description: " + issueDescription);
+    Logger.log("Row " + i + " - Location: " + location + ", App: " + appName + ", VPR: " + vpr + ", Issue Description: " + issueDescription + ", Risk Type: " + riskType);
 
     if (!locations.includes(location) || !appNames.includes(appName)) {
       continue; // Skip if the location or app is not in the predefined lists
@@ -215,7 +219,9 @@ function generateVPRCounts() {
         "Medium": 0,
         "Low": 0,
         "Info": 0,
-        "False Positive": 0 // Added counter for False Positive
+        "False Positive": 0, // Added counter for False Positive
+        "Within Tolerance": 0, // Added counter for Within Tolerance
+        "Aged / Risk Treatment Plan": 0 // Added counter for Aged / Risk Treatment Plan
       };
     }
 
@@ -227,6 +233,16 @@ function generateVPRCounts() {
     // Count False Positive
     if (issueDescription === "False Positive") {
       counts[location][appName]["False Positive"]++;
+    }
+
+    // Count "Within Tolerance"
+    if (riskType === "Within Tolerance") {
+      counts[location][appName]["Within Tolerance"]++;
+    }
+
+    // Count "Aged / Risk Treatment Plan"
+    if (riskType === "Aged" || riskType === "Risk Treatment Plan") {
+      counts[location][appName]["Aged / Risk Treatment Plan"]++;
     }
   }
 
@@ -243,11 +259,13 @@ function generateVPRCounts() {
                       counts[loc][app]["Medium"], 
                       counts[loc][app]["Low"], 
                       counts[loc][app]["Info"], 
-                      counts[loc][app]["False Positive"]]; // Added False Positive count
+                      counts[loc][app]["False Positive"], // Added False Positive count
+                      counts[loc][app]["Within Tolerance"], // Added Within Tolerance count
+                      counts[loc][app]["Aged / Risk Treatment Plan"]]; // Added Aged / Risk Treatment Plan count
       countsSheet.getRange(row, 1, 1, countRow.length).setValues([countRow]);
       row++;
     }
   }
 
-  Logger.log('VPR counts and False Positive generated and added to the "Counts" sheet.');
+  Logger.log('VPR counts, False Positive, Within Tolerance and Aged/Risk Treatment Plan generated and added to the "Counts" sheet.');
 }
