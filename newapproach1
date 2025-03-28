@@ -34,51 +34,110 @@ function copyDataInBatches() {
   // Get the total number of rows (batch size can be adjusted)
   var totalRows = sourceSheet.getLastRow();
   var batchSize = 5000; // Number of rows per batch
-  var startRow = parseInt(PropertiesService.getScriptProperties().getProperty('startRow') || 2);  // Default to row 2
+  var startRow = 2; // Start from the second row (skipping the header row)
   var endRow = Math.min(startRow + batchSize - 1, totalRows);
   
   // Process data in batches
-  var dataRange = sourceSheet.getRange(startRow, 1, endRow - startRow + 1, sourceSheet.getLastColumn());
-  var data = dataRange.getValues();
-  
-  // Filter out rows where 'Bus App Name' is not in the specified list
-  var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
-                  "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
-  
-  var filteredData = data.filter(function(row) {
-    var busAppName = row[header.indexOf("Bus App Name")]; // Get the "Bus App Name"
-    return appNames.includes(busAppName); // Keep rows where "Bus App Name" is in the appNames list
-  }).map(function(row) {
-    // Extract only the required columns using column indexes
-    return columnIndexes.map(function(index) {
-      return row[index];
+  function processBatch() {
+    var dataRange = sourceSheet.getRange(startRow, 1, endRow - startRow + 1, sourceSheet.getLastColumn());
+    var data = dataRange.getValues();
+    
+    // Filter out rows where 'Bus App Name' is not in the specified list
+    var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
+                    "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
+    
+    var filteredData = data.filter(function(row) {
+      var busAppName = row[header.indexOf("Bus App Name")]; // Get the "Bus App Name"
+      return appNames.includes(busAppName); // Keep rows where "Bus App Name" is in the appNames list
+    }).map(function(row) {
+      // Extract only the required columns using column indexes
+      return columnIndexes.map(function(index) {
+        return row[index];
+      });
     });
-  });
 
-  // If there are any filtered rows, append them to the Temporary Sheet
-  if (filteredData.length > 0) {
-    tempSheet.getRange(tempSheet.getLastRow() + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+    // If there are any filtered rows, append them to the Temporary Sheet
+    if (filteredData.length > 0) {
+      tempSheet.getRange(tempSheet.getLastRow() + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+    }
+
+    // Update start and end rows for the next batch
+    startRow = endRow + 1;
+    endRow = Math.min(startRow + batchSize - 1, totalRows);
+
+    // If there's more data to process, rerun the function after 40 seconds
+    if (startRow <= totalRows) {
+      Utilities.sleep(40000);  // Wait for 40 seconds
+      processBatch(); // Recurse to the next batch
+    } else {
+      // Once all data is processed, log the link to the new Temporary Sheet
+      var sheetUrl = temporarySpreadsheet.getUrl();
+      Logger.log('Temporary Sheet Link: ' + sheetUrl);
+      
+      // Now, handle the Platops Internal Findings logic
+      handlePlatopsInternalFindings(temporarySpreadsheet);  // Pass temporarySpreadsheet object here
+    }
   }
 
-  // Update the start row for the next batch
-  PropertiesService.getScriptProperties().setProperty('startRow', endRow + 1);
+  // Start processing the first batch
+  processBatch();
+}
 
-  // If there's more data to process, set a trigger to continue processing
-  if (endRow < totalRows) {
-    // Set a time-driven trigger to continue processing after a short delay
-    ScriptApp.newTrigger('copyDataInBatches')
-      .timeBased()
-      .after(1000)  // 1 second delay before running the next batch
-      .create();
+function handlePlatopsInternalFindings(temporarySpreadsheet) {
+  var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
+  var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
+  var sheet1 = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where data is pasted
+  
+  var currentDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  var newSheetName = "data_" + currentDate;
+
+  // Check if 'Detail Data' is empty
+  Logger.log('Checking Detail Data sheet data...');
+  if (sheet1.getLastRow() === 0) {
+    Logger.log('No data found in Detail Data sheet. Pasting the data...');
+    // If the sheet is empty, simply paste the data from the Temporary sheet into it
+    var tempData = temporarySpreadsheet.getSheets()[0].getDataRange().getValues(); // Get data from the Temporary Sheet
+    sheet1.getRange(1, 1, tempData.length, tempData[0].length).setValues(tempData);
+    Logger.log('Data pasted to Detail Data sheet.');
   } else {
-    // All data is processed, log the link to the new Temporary Sheet
-    var sheetUrl = temporarySpreadsheet.getUrl();
-    Logger.log('Temporary Sheet Link: ' + sheetUrl);
+    Logger.log('Data found in Detail Data sheet.');
+    // If there is existing data, move it to a new sheet with the current date as name
+    var existingData = sheet1.getDataRange().getValues();
     
-    // Optionally, send the link via email
-    // MailApp.sendEmail("your-email@example.com", "Data Copy Complete", "The data copy is complete. Here is the link to the Temporary Sheet: " + sheetUrl);
+    Logger.log('Moving existing data to a new sheet with name: ' + newSheetName);
+    // Create a new sheet with the name "data_<currentDate>" and paste the existing data there
+    var newDataSheet = fixedSpreadsheet.insertSheet(newSheetName);
+    newDataSheet.getRange(1, 1, existingData.length, existingData[0].length).setValues(existingData);
     
-    // Clear the startRow property when finished
-    PropertiesService.getScriptProperties().deleteProperty('startRow');
+    Logger.log('Existing data moved successfully.');
+    
+    // Paste new data from the Temporary sheet into Detail Data
+    var newTempData = temporarySpreadsheet.getSheets()[0].getDataRange().getValues(); // Get new data from Temporary Sheet
+    sheet1.clear(); // Clear the current content of Detail Data
+    sheet1.getRange(1, 1, newTempData.length, newTempData[0].length).setValues(newTempData);
+    Logger.log('New data pasted to Detail Data sheet.');
   }
+
+  // Specify the folder ID where the new Internal Findings report will be created
+  var folderId = 'YOUR_FOLDER_ID';  // Replace with the folder ID where the report should be created
+  var folder = DriveApp.getFolderById(folderId); // Get the folder by ID
+
+  // Create a new Google Sheet for "Internal Findings_<current_date>"
+  var internalFindingsSheet = SpreadsheetApp.create("Internal Findings_" + currentDate); // Create a new sheet
+  
+  // Add Detail Data sheet and data_<current_date> sheet to the new Internal Findings sheet
+  var internalFindingsSpreadsheet = SpreadsheetApp.openById(internalFindingsSheet.getId());
+  var internalSheet1 = internalFindingsSpreadsheet.getSheets()[0];
+  
+  // Copy the data from Detail Data sheet and data_<current_date> sheet to the Internal Findings sheet
+  internalSheet1.getRange(1, 1, newTempData.length, newTempData[0].length).setValues(newTempData); // Paste new data into Internal Findings
+  
+  var newDataSheetFromFixed = fixedSpreadsheet.getSheetByName(newSheetName).getDataRange().getValues();
+  internalFindingsSpreadsheet.insertSheet(newSheetName); // Create a sheet in Internal Findings for the data_<current_date>
+  internalFindingsSpreadsheet.getSheetByName(newSheetName).getRange(1, 1, newDataSheetFromFixed.length, newDataSheetFromFixed[0].length).setValues(newDataSheetFromFixed);
+
+  // Move the newly created report to the specified folder
+  folder.addFile(DriveApp.getFileById(internalFindingsSheet.getId()));
+  
+  Logger.log('Internal Findings report created and moved to folder: ' + folder.getName());
 }
