@@ -20,7 +20,7 @@ function copyDataInBatches() {
     
     // New columns added (14 more columns)
     "Column1", "Column2", "Column3", "Column4", "Column5", "Column6", "Column7", "Column8", 
-    "Column9", "Column10", "Column11", "Column12", "Column13", "Column14"
+    "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Issue Description"
   ];
 
   // Find the indexes of the required columns in the header
@@ -153,15 +153,16 @@ function generateVPRCounts() {
   // Retrieve the data range from the "Detail Data" sheet
   var data = dataSheet.getDataRange().getValues();
   
-  // Get column indexes for VPR, Location, and Bus App Name
+  // Get column indexes for VPR, Location, Bus App Name, and Issue Description
   var header = data[0];
   var vprIndex = header.indexOf("VPR");
   var locationIndex = header.indexOf("Location");
   var busAppNameIndex = header.indexOf("Bus App Name");
+  var issueDescriptionIndex = header.indexOf("Issue Description");
 
   // Log the header and column indices for debugging
   Logger.log("Header: " + header);
-  Logger.log("VPR Index: " + vprIndex + ", Location Index: " + locationIndex + ", Bus App Name Index: " + busAppNameIndex);
+  Logger.log("VPR Index: " + vprIndex + ", Location Index: " + locationIndex + ", Bus App Name Index: " + busAppNameIndex + ", Issue Description Index: " + issueDescriptionIndex);
 
   // Prepare the "Counts" sheet (if it doesn't already exist, create it)
   var countsSheet = fixedSpreadsheet.getSheetByName('Counts');
@@ -179,6 +180,7 @@ function generateVPRCounts() {
   countsSheet.getRange(1, 5).setValue("Medium");
   countsSheet.getRange(1, 6).setValue("Low");
   countsSheet.getRange(1, 7).setValue("Info");
+  countsSheet.getRange(1, 8).setValue("False Positive"); // Added new column for False Positive
   
   // Define the VPR values and Locations
   var vprValues = ["Critical", "High", "Medium", "Low", "Info"];
@@ -193,9 +195,10 @@ function generateVPRCounts() {
     var location = data[i][locationIndex];
     var appName = data[i][busAppNameIndex];
     var vpr = data[i][vprIndex];
+    var issueDescription = data[i][issueDescriptionIndex];
 
     // Log the values being processed for debugging
-    Logger.log("Row " + i + " - Location: " + location + ", App: " + appName + ", VPR: " + vpr);
+    Logger.log("Row " + i + " - Location: " + location + ", App: " + appName + ", VPR: " + vpr + ", Issue Description: " + issueDescription);
 
     if (!locations.includes(location) || !appNames.includes(appName)) {
       continue; // Skip if the location or app is not in the predefined lists
@@ -211,13 +214,19 @@ function generateVPRCounts() {
         "High": 0,
         "Medium": 0,
         "Low": 0,
-        "Info": 0
+        "Info": 0,
+        "False Positive": 0 // Added counter for False Positive
       };
     }
 
     // Increment the count for the VPR value
     if (counts[location][appName][vpr] !== undefined) {
       counts[location][appName][vpr]++;
+    }
+
+    // Count False Positive
+    if (issueDescription === "False Positive") {
+      counts[location][appName]["False Positive"]++;
     }
   }
 
@@ -233,11 +242,12 @@ function generateVPRCounts() {
                       counts[loc][app]["High"], 
                       counts[loc][app]["Medium"], 
                       counts[loc][app]["Low"], 
-                      counts[loc][app]["Info"]];
+                      counts[loc][app]["Info"], 
+                      counts[loc][app]["False Positive"]]; // Added False Positive count
       countsSheet.getRange(row, 1, 1, countRow.length).setValues([countRow]);
       row++;
     }
   }
 
-  Logger.log('VPR counts generated and added to the "Counts" sheet.');
+  Logger.log('VPR counts and False Positive generated and added to the "Counts" sheet.');
 }
