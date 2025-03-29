@@ -235,7 +235,7 @@ function generateVPRCounts() {
         "False Positive": 0,
         "Within Tolerance": 0,
         "Aged / Risk Treatment Plan": 0,
-        "Patched": 0,
+        "Patched": 0, // Added counter for Patched
         "New": 0 // Added counter for New
       };
     }
