@@ -94,6 +94,7 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
   var sheet1 = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where data is pasted
   var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data'); // The sheet where last week's data is stored
   var countsSheet = fixedSpreadsheet.getSheetByName('Counts'); // The sheet where counts are stored
+  var locationCountSheet = fixedSpreadsheet.getSheetByName('Location Count'); // The sheet for Location-wise counts
   
   var currentDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
   var newSheetName = "data_" + currentDate;
@@ -145,88 +146,25 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
 
   // Generate VPR Counts (Counts for Location and Bus App Name)
   generateVPRCounts();
+
+  // Generate Location-wise Total Counts
+  generateLocationCount();
 }
 
-function generateVPRCounts() {
+function generateLocationCount() {
   var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
   var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
-  var dataSheet = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where your data is
-  var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data'); // The sheet where last week's data is stored
+  var countsSheet = fixedSpreadsheet.getSheetByName('Counts'); // The sheet where counts are stored
+  var locationCountSheet = fixedSpreadsheet.getSheetByName('Location Count'); // The sheet where location-wise total counts are stored
   
-  // Retrieve the data range from the "Detail Data" sheet
-  var data = dataSheet.getDataRange().getValues();
-  
-  // Get column indexes for VPR, Location, Bus App Name, Issue Description / PM #, Unique Identifier, and Risk Type
-  var header = data[0];
-  var vprIndex = header.indexOf("VPR");
-  var locationIndex = header.indexOf("Location");
-  var busAppNameIndex = header.indexOf("Bus App Name");
-  var issueDescriptionIndex = header.indexOf("Issue Description / PM #");
-  var riskTypeIndex = header.indexOf("Risk Type");
-  var uniqueIdentifierIndex = header.indexOf("Unique Identifier w Repository & Port");
+  var countsData = countsSheet.getDataRange().getValues();
+  var locationCounts = {};
 
-  // Log the header and column indices for debugging
-  Logger.log("Header: " + header);
-  Logger.log("VPR Index: " + vprIndex + ", Location Index: " + locationIndex + ", Bus App Name Index: " + busAppNameIndex + ", Issue Description Index: " + issueDescriptionIndex + ", Risk Type Index: " + riskTypeIndex + ", Unique Identifier Index: " + uniqueIdentifierIndex);
-
-  // Prepare the "Counts" sheet (if it doesn't already exist, create it)
-  var countsSheet = fixedSpreadsheet.getSheetByName('Counts');
-  if (!countsSheet) {
-    countsSheet = fixedSpreadsheet.insertSheet('Counts');
-  } else {
-    countsSheet.clear(); // Clear the sheet if it exists
-  }
-  
-  // Set the headers for the "Counts" sheet
-  countsSheet.getRange(1, 1).setValue("Location");
-  countsSheet.getRange(1, 2).setValue("App Name");
-  countsSheet.getRange(1, 3).setValue("Critical");
-  countsSheet.getRange(1, 4).setValue("High");
-  countsSheet.getRange(1, 5).setValue("Medium");
-  countsSheet.getRange(1, 6).setValue("Low");
-  countsSheet.getRange(1, 7).setValue("Info");
-  countsSheet.getRange(1, 8).setValue("False Positive"); // Added new column for False Positive
-  countsSheet.getRange(1, 9).setValue("Within Tolerance"); // New column for Within Tolerance
-  countsSheet.getRange(1, 10).setValue("Aged / Risk Treatment Plan"); // New column for Aged / Risk Treatment Plan
-  countsSheet.getRange(1, 11).setValue("Patched"); // New column for Patched count
-  countsSheet.getRange(1, 12).setValue("New"); // New column for New count
-  
-  // Define the VPR values and Locations
-  var vprValues = ["Critical", "High", "Medium", "Low", "Info"];
-  var locations = ["Location 1", "Location 2", "Location 3"];
-  var appNames = ["App1", "App2"]; // Add more apps if needed
-  
-  // Initialize a counter object to store the counts
-  var counts = {};
-
-  // Get the last week's data
-  var lastWeekData = lastWeekDataSheet.getDataRange().getValues();
-  var lastWeekIdentifiers = lastWeekData.map(function(row) {
-    return row[uniqueIdentifierIndex]; // Get the unique identifiers from Last Week Data
-  });
-
-  // Loop through the data and count occurrences of each combination
-  for (var i = 1; i < data.length; i++) {
-    var location = data[i][locationIndex];
-    var appName = data[i][busAppNameIndex];
-    var vpr = data[i][vprIndex];
-    var issueDescription = data[i][issueDescriptionIndex];
-    var riskType = data[i][riskTypeIndex];
-    var uniqueIdentifier = data[i][uniqueIdentifierIndex];
-
-    // Log the values being processed for debugging
-    Logger.log("Row " + i + " - Location: " + location + ", App: " + appName + ", VPR: " + vpr + ", Issue Description: " + issueDescription + ", Risk Type: " + riskType);
-
-    if (!locations.includes(location) || !appNames.includes(appName)) {
-      continue; // Skip if the location or app is not in the predefined lists
-    }
-
-    if (!counts[location]) {
-      counts[location] = {};
-    }
-
-    if (!counts[location][appName]) {
-      counts[location][appName] = {
+  // Iterate through counts to calculate the totals for each location
+  for (var i = 1; i < countsData.length; i++) {
+    var location = countsData[i][0];
+    if (!locationCounts[location]) {
+      locationCounts[location] = {
         "Critical": 0,
         "High": 0,
         "Medium": 0,
@@ -235,64 +173,53 @@ function generateVPRCounts() {
         "False Positive": 0,
         "Within Tolerance": 0,
         "Aged / Risk Treatment Plan": 0,
-        "Patched": 0, // Added counter for Patched
-        "New": 0 // Added counter for New
+        "Patched": 0,
+        "New": 0
       };
     }
 
-    // Increment the count for the VPR value
-    if (counts[location][appName][vpr] !== undefined) {
-      counts[location][appName][vpr]++;
-    }
-
-    // Count False Positive
-    if (issueDescription === "False Positive") {
-      counts[location][appName]["False Positive"]++;
-    }
-
-    // Count "Within Tolerance"
-    if (riskType === "Within Tolerance") {
-      counts[location][appName]["Within Tolerance"]++;
-    }
-
-    // Count "Aged / Risk Treatment Plan"
-    if (riskType === "Aged" || riskType === "Risk Treatment Plan") {
-      counts[location][appName]["Aged / Risk Treatment Plan"]++;
-    }
-
-    // Count Patched (if the unique identifier from last week's data is missing)
-    if (lastWeekIdentifiers.indexOf(uniqueIdentifier) === -1) {
-      counts[location][appName]["Patched"]++;
-    }
-
-    // Count New (if the unique identifier is new in Detail Data and not in Last Week Data)
-    if (lastWeekIdentifiers.indexOf(uniqueIdentifier) === -1) {
-      counts[location][appName]["New"]++;
-    }
+    locationCounts[location]["Critical"] += countsData[i][2];
+    locationCounts[location]["High"] += countsData[i][3];
+    locationCounts[location]["Medium"] += countsData[i][4];
+    locationCounts[location]["Low"] += countsData[i][5];
+    locationCounts[location]["Info"] += countsData[i][6];
+    locationCounts[location]["False Positive"] += countsData[i][7];
+    locationCounts[location]["Within Tolerance"] += countsData[i][8];
+    locationCounts[location]["Aged / Risk Treatment Plan"] += countsData[i][9];
+    locationCounts[location]["Patched"] += countsData[i][10];
+    locationCounts[location]["New"] += countsData[i][11];
   }
 
-  // Log the final counts object for debugging
-  Logger.log("Counts: " + JSON.stringify(counts));
+  // Write totals to the "Location Count" sheet
+  locationCountSheet.clear(); // Clear the sheet first
+  locationCountSheet.getRange(1, 1).setValue("Location");
+  locationCountSheet.getRange(1, 2).setValue("Critical");
+  locationCountSheet.getRange(1, 3).setValue("High");
+  locationCountSheet.getRange(1, 4).setValue("Medium");
+  locationCountSheet.getRange(1, 5).setValue("Low");
+  locationCountSheet.getRange(1, 6).setValue("Info");
+  locationCountSheet.getRange(1, 7).setValue("False Positive");
+  locationCountSheet.getRange(1, 8).setValue("Within Tolerance");
+  locationCountSheet.getRange(1, 9).setValue("Aged / Risk Treatment Plan");
+  locationCountSheet.getRange(1, 10).setValue("Patched");
+  locationCountSheet.getRange(1, 11).setValue("New");
 
-  // Write the counts to the "Counts" sheet
   var row = 2;
-  for (var loc in counts) {
-    for (var app in counts[loc]) {
-      var countRow = [loc, app, 
-                      counts[loc][app]["Critical"], 
-                      counts[loc][app]["High"], 
-                      counts[loc][app]["Medium"], 
-                      counts[loc][app]["Low"], 
-                      counts[loc][app]["Info"], 
-                      counts[loc][app]["False Positive"], 
-                      counts[loc][app]["Within Tolerance"], 
-                      counts[loc][app]["Aged / Risk Treatment Plan"],
-                      counts[loc][app]["Patched"], 
-                      counts[loc][app]["New"]]; // Added New count
-      countsSheet.getRange(row, 1, 1, countRow.length).setValues([countRow]);
-      row++;
-    }
+  for (var location in locationCounts) {
+    var rowData = [location,
+                   locationCounts[location]["Critical"],
+                   locationCounts[location]["High"],
+                   locationCounts[location]["Medium"],
+                   locationCounts[location]["Low"],
+                   locationCounts[location]["Info"],
+                   locationCounts[location]["False Positive"],
+                   locationCounts[location]["Within Tolerance"],
+                   locationCounts[location]["Aged / Risk Treatment Plan"],
+                   locationCounts[location]["Patched"],
+                   locationCounts[location]["New"]];
+    locationCountSheet.getRange(row, 1, 1, rowData.length).setValues([rowData]);
+    row++;
   }
 
-  Logger.log('VPR counts, False Positive, Within Tolerance, Aged/Risk Treatment Plan, Patched, and New generated and added to the "Counts" sheet.');
+  Logger.log('Location-wise total counts generated and added to the "Location Count" sheet.');
 }
