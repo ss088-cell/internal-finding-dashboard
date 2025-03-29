@@ -94,6 +94,7 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
   var sheet1 = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where data is pasted
   var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data'); // The sheet where last week's data is stored
   var countsSheet = fixedSpreadsheet.getSheetByName('Counts'); // The sheet where counts are stored
+  var locationCountSheet = fixedSpreadsheet.getSheetByName('Location Count'); // The sheet for location-wise counts
   
   var currentDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
   var newSheetName = "data_" + currentDate;
@@ -229,7 +230,7 @@ function generateVPRCounts() {
         "Within Tolerance": 0,
         "Aged / Risk Treatment Plan": 0,
         "Patched": 0,
-        "New": 0 // Added counter for New
+        "New": 0
       };
     }
 
@@ -278,11 +279,9 @@ function generateVPRCounts() {
                       counts[loc][app]["Within Tolerance"], 
                       counts[loc][app]["Aged / Risk Treatment Plan"],
                       counts[loc][app]["Patched"], 
-                      counts[loc][app]["New"]]; // Added New count
+                      counts[loc][app]["New"]];
       countsSheet.getRange(row, 1, 1, countRow.length).setValues([countRow]);
       row++;
     }
   }
-
-  Logger.log('VPR counts, False Positive, Within Tolerance, Aged/Risk Treatment Plan, Patched, and New generated and added to the "Counts" sheet.');
 }
