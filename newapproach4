@@ -94,7 +94,6 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
   var sheet1 = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where data is pasted
   var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data'); // The sheet where last week's data is stored
   var countsSheet = fixedSpreadsheet.getSheetByName('Counts'); // The sheet where counts are stored
-  var locationCountSheet = fixedSpreadsheet.getSheetByName('Location Count'); // The sheet for location-wise counts
   
   var currentDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
   var newSheetName = "data_" + currentDate;
@@ -166,6 +165,10 @@ function generateVPRCounts() {
   var riskTypeIndex = header.indexOf("Risk Type");
   var uniqueIdentifierIndex = header.indexOf("Unique Identifier w Repository & Port");
 
+  // Log the header and column indices for debugging
+  Logger.log("Header: " + header);
+  Logger.log("VPR Index: " + vprIndex + ", Location Index: " + locationIndex + ", Bus App Name Index: " + busAppNameIndex + ", Issue Description Index: " + issueDescriptionIndex + ", Risk Type Index: " + riskTypeIndex + ", Unique Identifier Index: " + uniqueIdentifierIndex);
+
   // Prepare the "Counts" sheet (if it doesn't already exist, create it)
   var countsSheet = fixedSpreadsheet.getSheetByName('Counts');
   if (!countsSheet) {
@@ -182,12 +185,12 @@ function generateVPRCounts() {
   countsSheet.getRange(1, 5).setValue("Medium");
   countsSheet.getRange(1, 6).setValue("Low");
   countsSheet.getRange(1, 7).setValue("Info");
-  countsSheet.getRange(1, 8).setValue("False Positive");
-  countsSheet.getRange(1, 9).setValue("Within Tolerance");
-  countsSheet.getRange(1, 10).setValue("Aged / Risk Treatment Plan");
-  countsSheet.getRange(1, 11).setValue("Patched");
-  countsSheet.getRange(1, 12).setValue("New");
-
+  countsSheet.getRange(1, 8).setValue("False Positive"); // Added new column for False Positive
+  countsSheet.getRange(1, 9).setValue("Within Tolerance"); // New column for Within Tolerance
+  countsSheet.getRange(1, 10).setValue("Aged / Risk Treatment Plan"); // New column for Aged / Risk Treatment Plan
+  countsSheet.getRange(1, 11).setValue("Patched"); // New column for Patched count
+  countsSheet.getRange(1, 12).setValue("New"); // New column for New count
+  
   // Define the VPR values and Locations
   var vprValues = ["Critical", "High", "Medium", "Low", "Info"];
   var locations = ["Location 1", "Location 2", "Location 3"];
@@ -211,6 +214,9 @@ function generateVPRCounts() {
     var riskType = data[i][riskTypeIndex];
     var uniqueIdentifier = data[i][uniqueIdentifierIndex];
 
+    // Log the values being processed for debugging
+    Logger.log("Row " + i + " - Location: " + location + ", App: " + appName + ", VPR: " + vpr + ", Issue Description: " + issueDescription + ", Risk Type: " + riskType);
+
     if (!locations.includes(location) || !appNames.includes(appName)) {
       continue; // Skip if the location or app is not in the predefined lists
     }
@@ -230,7 +236,7 @@ function generateVPRCounts() {
         "Within Tolerance": 0,
         "Aged / Risk Treatment Plan": 0,
         "Patched": 0,
-        "New": 0
+        "New": 0 // Added counter for New
       };
     }
 
@@ -265,6 +271,9 @@ function generateVPRCounts() {
     }
   }
 
+  // Log the final counts object for debugging
+  Logger.log("Counts: " + JSON.stringify(counts));
+
   // Write the counts to the "Counts" sheet
   var row = 2;
   for (var loc in counts) {
@@ -279,9 +288,12 @@ function generateVPRCounts() {
                       counts[loc][app]["Within Tolerance"], 
                       counts[loc][app]["Aged / Risk Treatment Plan"],
                       counts[loc][app]["Patched"], 
-                      counts[loc][app]["New"]];
+                      counts[loc][app]["New"]]; // Added New count
       countsSheet.getRange(row, 1, 1, countRow.length).setValues([countRow]);
       row++;
     }
   }
+
+  Logger.log('VPR counts, False Positive, Within Tolerance, Aged/Risk Treatment Plan, Patched, and New generated and added to the "Counts" sheet.');
 }
+
