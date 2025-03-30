@@ -290,3 +290,46 @@ function generateVPRCounts() {
 
   Logger.log('VPR counts, False Positive, Within Tolerance, Aged/Risk Treatment Plan, Patched, and New generated and added to the "Counts" sheet.');
 }
+
+function updateLocationCountsNewColumn(fixedSpreadsheet) {
+  var locationCountsSheet = fixedSpreadsheet.getSheetByName('Location Counts'); // The sheet for Location counts
+  if (!locationCountsSheet) {
+    Logger.log("Location Counts sheet not found!");
+    return;
+  }
+
+  var data = locationCountsSheet.getDataRange().getValues();
+  var header = data[0];
+  var locationIndex = header.indexOf("Location");
+  var appNameIndex = header.indexOf("App Name");
+  var newIndex = header.indexOf("New");
+  
+  // Get counts data from "Counts" sheet
+  var countsSheet = fixedSpreadsheet.getSheetByName('Counts');
+  var countsData = countsSheet.getDataRange().getValues();
+  
+  var countsMap = {};
+  for (var i = 1; i < countsData.length; i++) {
+    var location = countsData[i][0];
+    var appName = countsData[i][1];
+    var newCount = countsData[i][11]; // New count is in column 12 (index 11)
+    
+    // Create a map of counts for easy lookup
+    if (!countsMap[location]) {
+      countsMap[location] = {};
+    }
+    countsMap[location][appName] = newCount;
+  }
+
+  // Update the New column in Location Counts sheet based on the counts from the "Counts" sheet
+  for (var j = 1; j < data.length; j++) {
+    var location = data[j][locationIndex];
+    var appName = data[j][appNameIndex];
+    
+    if (countsMap[location] && countsMap[location][appName] !== undefined) {
+      locationCountsSheet.getRange(j + 1, newIndex + 1).setValue(countsMap[location][appName]);
+    }
+  }
+  
+  Logger.log("Location Counts 'New' column updated successfully.");
+}
