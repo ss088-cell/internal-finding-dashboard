@@ -137,6 +137,9 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
   var internalFindingsSpreadsheet = SpreadsheetApp.openById(internalFindingsSheet.getId());
   var internalSheet1 = internalFindingsSpreadsheet.getSheets()[0];
   
+  // Rename "Sheet1" to "Last Week Data" in the Internal Findings sheet
+  internalSheet1.setName('Last Week Data');
+  
   // Copy the data from Last Week Data sheet and Detail Data sheet to the Internal Findings sheet
   var lastWeekData = lastWeekDataSheet.getDataRange().getValues();
   internalSheet1.getRange(1, 1, lastWeekData.length, lastWeekData[0].length).setValues(lastWeekData); // Paste Last Week Data into Internal Findings
@@ -339,4 +342,3 @@ function updateLocationCountsNewColumn(fixedSpreadsheet) {
   
   Logger.log("Location Counts 'New' column updated successfully.");
 }
-
