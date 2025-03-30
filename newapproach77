@@ -92,6 +92,16 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
   var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
   var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
   var sheet1 = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where data is pasted
+  
+  // Check if 'Sheet1' exists and rename it to 'Last Week Data'
+  var sheet1Exists = fixedSpreadsheet.getSheetByName('Sheet1');
+  if (sheet1Exists) {
+    sheet1Exists.setName('Last Week Data');
+    Logger.log("Sheet1 renamed to 'Last Week Data'.");
+  } else {
+    Logger.log("No sheet named 'Sheet1' found to rename.");
+  }
+
   var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data'); // The sheet where last week's data is stored
   var countsSheet = fixedSpreadsheet.getSheetByName('Counts'); // The sheet where counts are stored
   var locationCountsSheet = fixedSpreadsheet.getSheetByName('Location Counts'); // The sheet where location counts are stored
@@ -99,26 +109,22 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
   var currentDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
   var newSheetName = "data_" + currentDate;
 
-  // Handle "Last Week Data" sheet
-  Logger.log('Checking Last Week Data sheet data...');
-  if (!lastWeekDataSheet || lastWeekDataSheet.getLastRow() === 0) {
-    // If the "Last Week Data" sheet is empty or doesn't exist, copy data from "Detail Data"
-    Logger.log('No data found in Last Week Data sheet. Copying data from Detail Data...');
+  // Handle moving existing data in 'Detail Data' to 'Last Week Data'
+  Logger.log('Checking Detail Data sheet data...');
+  if (sheet1.getLastRow() > 0) {
+    // If there is data in 'Detail Data', move it to 'Last Week Data'
     var existingData = sheet1.getDataRange().getValues();
-    // If the sheet doesn't exist, create it and paste the data
-    if (!lastWeekDataSheet) {
-      lastWeekDataSheet = fixedSpreadsheet.insertSheet('Last Week Data');
-    }
     lastWeekDataSheet.getRange(1, 1, existingData.length, existingData[0].length).setValues(existingData);
-    Logger.log('Data from Detail Data copied to Last Week Data sheet.');
-  } else {
-    // If "Last Week Data" already has data, clear it and paste the current data
-    Logger.log('Data found in Last Week Data sheet. Deleting existing data and copying current data...');
-    lastWeekDataSheet.clear(); // Clear existing data
-    var newTempData = temporarySpreadsheet.getSheets()[0].getDataRange().getValues(); // Get current data from Temporary Sheet
-    lastWeekDataSheet.getRange(1, 1, newTempData.length, newTempData[0].length).setValues(newTempData); // Paste the current data
-    Logger.log('Current data pasted to Last Week Data sheet.');
+    Logger.log('Data from Detail Data moved to Last Week Data sheet.');
   }
+
+  // Clear the 'Detail Data' sheet before inserting new data from the temporary sheet
+  sheet1.clear();  // Clears the existing data in the Detail Data sheet
+
+  // Copy new data from the Temporary Sheet to 'Detail Data'
+  var newTempData = temporarySpreadsheet.getSheets()[0].getDataRange().getValues(); // Get current data from Temporary Sheet
+  sheet1.getRange(1, 1, newTempData.length, newTempData[0].length).setValues(newTempData); // Paste the current data into Detail Data
+  Logger.log('Current data pasted to Detail Data sheet.');
 
   // Now, create a new report sheet called Internal Findings_<current_date> in the specified folder
   var folderId = 'YOUR_FOLDER_ID';  // Replace with the folder ID where the report should be created
@@ -333,3 +339,4 @@ function updateLocationCountsNewColumn(fixedSpreadsheet) {
   
   Logger.log("Location Counts 'New' column updated successfully.");
 }
+
