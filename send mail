@@ -1,27 +1,28 @@
 function sendEmailReport(internalFindingsSpreadsheet) {
   try {
-    // Get the internal findings file created in the folder
-    var folderId = 'YOUR_FOLDER_ID';  // Replace with the folder ID where the report was saved
-    var folder = DriveApp.getFolderById(folderId);
-    var file = DriveApp.getFileById(internalFindingsSpreadsheet.getId()); // Get the created file by ID
-    var blob = file.getAs('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); // Convert the file to a Blob object (XLSX format)
+    // Get the internal findings file URL
+    var fileUrl = internalFindingsSpreadsheet.getUrl();  // Get the URL of the newly created Google Sheet
 
     // Prepare the email details
     var subject = "Internal Finding Report for Last Week_" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
-    var body = "Hi Team,\n\nPlease find attached Internal Finding Report for Last week as well as this week.\n\nNote Below points:\n1. The Last week sheet contains last week's data.\n2. The Detail Data sheet contains this week's data.\n\nRegards,\nTeam";
+    var body = "Hi Team,\n\nPlease find below the link to the Internal Finding Report for Last week as well as this week.\n\n" +
+               "Note Below points:\n" +
+               "1. The Last week sheet contains last week's data.\n" +
+               "2. The Detail Data sheet contains this week's data.\n\n" +
+               "Report Link: " + fileUrl + "\n\n" +
+               "Regards,\nTeam";
 
     // Define recipient
     var recipient = "your_email@example.com"; // Replace with the actual recipient email address
 
-    // Send the email with attachment
+    // Send the email with the link to the Google Sheet
     MailApp.sendEmail({
       to: recipient,
       subject: subject,
-      body: body,
-      attachments: [blob] // Attach the file as a Blob object (in XLSX format)
+      body: body
     });
 
-    Logger.log("Email sent successfully with the attachment.");
+    Logger.log("Email sent successfully with the Google Sheet link.");
   } catch (e) {
     Logger.log("Error sending mail: " + e.message);
   }
