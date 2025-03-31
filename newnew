@@ -158,6 +158,28 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
 
   // Update the Location Counts New column and add logger for Location Counts
   updateLocationCountsNewColumn(fixedSpreadsheet);
+
+  // Send the email with the report attached
+  sendEmailWithReport(internalFindingsSheet);
+}
+
+function sendEmailWithReport(internalFindingsSheet) {
+  // Set the subject and body for the email
+  var subject = "Internal Finding Report for Last Week_" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  var body = "Hi Team,\n\nPlease find attached the Internal Finding Report for last week as well as this week.\n\nNote below:\n1. The Last Week Data sheet contains last week's data.\n2. The Detail Data sheet contains this week's data.\n\nRegards,\nTeam";
+
+  // Get the URL of the report to be attached
+  var reportFile = DriveApp.getFileById(internalFindingsSheet.getId());
+  
+  // Send the email with the attached report as a Google Sheet
+  MailApp.sendEmail({
+    to: 'recipient@example.com', // Replace with the recipient's email address
+    subject: subject,
+    body: body,
+    attachments: [reportFile.getAs(MimeType.GOOGLE_SHEETS)]  // Attach the report as a Google Sheet
+  });
+
+  Logger.log("Email sent successfully with the report attached.");
 }
 
 function generateVPRCounts() {
