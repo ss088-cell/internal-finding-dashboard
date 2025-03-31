@@ -1,12 +1,14 @@
-function sendEmailReport(internalFindingsSheet) {
+function sendEmailReport(internalFindingsSpreadsheet) {
   try {
-    // Get the spreadsheet as a blob (file) - converting to .xlsx format
-    var file = DriveApp.getFileById(internalFindingsSheet.getId());
-    var blob = file.getAs('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');  // or 'application/pdf' if you want PDF
+    // Get the internal findings file created in the folder
+    var folderId = 'YOUR_FOLDER_ID';  // Replace with the folder ID where the report was saved
+    var folder = DriveApp.getFolderById(folderId);
+    var file = DriveApp.getFileById(internalFindingsSpreadsheet.getId()); // Get the created file by ID
+    var blob = file.getAs('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); // Convert the file to a Blob object (XLSX format)
 
     // Prepare the email details
     var subject = "Internal Finding Report for Last Week_" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
-    var body = "Hi Team,\n\nPlease Find attached Internal Finding Report for Last week as well as this week.\n\nNote Below points:\n1. The Last week sheet contains last week's data.\n2. The Detail Data sheet contains this week's data.\n\nRegards,\nTeam";
+    var body = "Hi Team,\n\nPlease find attached Internal Finding Report for Last week as well as this week.\n\nNote Below points:\n1. The Last week sheet contains last week's data.\n2. The Detail Data sheet contains this week's data.\n\nRegards,\nTeam";
 
     // Define recipient
     var recipient = "your_email@example.com"; // Replace with the actual recipient email address
@@ -16,7 +18,7 @@ function sendEmailReport(internalFindingsSheet) {
       to: recipient,
       subject: subject,
       body: body,
-      attachments: [blob] // Attach the file as a Blob object
+      attachments: [blob] // Attach the file as a Blob object (in XLSX format)
     });
 
     Logger.log("Email sent successfully with the attachment.");
@@ -24,4 +26,3 @@ function sendEmailReport(internalFindingsSheet) {
     Logger.log("Error sending mail: " + e.message);
   }
 }
-
