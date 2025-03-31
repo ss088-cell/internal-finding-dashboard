@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch New Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+        }
+
+        .content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .log {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        #popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            width: 300px;
+        }
+
+        #popup button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #popup button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="content">
+        <h1>Click the button below to fetch current data</h1>
+        <button id="fetchButton" onclick="fetchData()">Fetch New Data</button>
+
+        <div id="logContainer" class="log"></div>
+    </div>
+
+    <div id="popup">
+        <h3>New data generated successful</h3>
+        <p>You will receive the mail with the data soon!</p>
+        <button onclick="closePopup()">Close</button>
+    </div>
+
+    <script>
+        function fetchData() {
+            document.getElementById("fetchButton").disabled = true;  // Disable the button during script execution
+            document.getElementById("logContainer").style.display = "block";  // Show log container
+
+            const logContainer = document.getElementById("logContainer");
+
+            // Simulate running the Google Apps Script
+            logContainer.innerHTML += "Fetching data...\n";
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            // Run the copyDataInBatches function in Google Apps Script
+            google.script.run
+                .withSuccessHandler(function() {
+                    logContainer.innerHTML += "Data fetching completed successfully.\n";
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                    showPopup();  // Show success popup after script finishes
+                })
+                .withFailureHandler(function(error) {
+                    logContainer.innerHTML += "Error: " + error.message + "\n";
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                })
+                .copyDataInBatches();  // This is the backend function being called
+        }
+
+        // Function to display the popup after the script is done
+        function showPopup() {
+            document.getElementById("popup").style.display = "block"; // Show the success popup
+        }
+
+        // Close the popup
+        function closePopup() {
+            document.getElementById("popup").style.display = "none";  // Hide the popup
+            document.getElementById("fetchButton").disabled = false;  // Re-enable the button
+        }
+    </script>
+
+</body>
+</html>
