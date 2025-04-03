@@ -1,0 +1,69 @@
+function handlePlatopsInternalFindings(temporarySpreadsheet) {
+  var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
+  var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
+
+  // Access sheets from the fixed spreadsheet
+  var detailDataSheet = fixedSpreadsheet.getSheetByName('Detail Data');
+  var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data');
+  var countsSheet = fixedSpreadsheet.getSheetByName('Counts');
+  var locationCountsSheet = fixedSpreadsheet.getSheetByName('Location Counts');
+
+  var currentDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+
+  // Move data from 'Detail Data' to 'Last Week Data'
+  Logger.log('Moving data from Detail Data to Last Week Data...');
+  if (detailDataSheet.getLastRow() > 0) {
+    var existingData = detailDataSheet.getDataRange().getValues();
+    lastWeekDataSheet.getRange(1, 1, existingData.length, existingData[0].length).setValues(existingData);
+    Logger.log('Data moved to Last Week Data.');
+  } else {
+    Logger.log('No data to move from Detail Data.');
+  }
+
+  // Clear the 'Detail Data' sheet before copying new data
+  detailDataSheet.clear();
+
+  // Copy new data from the Temporary Sheet to 'Detail Data'
+  var newTempData = temporarySpreadsheet.getSheets()[0].getDataRange().getValues(); // Get current data from Temporary Sheet
+  detailDataSheet.getRange(1, 1, newTempData.length, newTempData[0].length).setValues(newTempData); // Paste the current data into Detail Data
+  Logger.log('New data copied to Detail Data.');
+
+  // Update counts in 'Counts' and 'Location Counts' sheets
+  Logger.log('Updating counts...');
+  generateVPRCounts(); // Assuming this function updates the counts in the 'Counts' sheet
+  updateLocationCountsNewColumn(fixedSpreadsheet); // Assuming this function updates the 'Location Counts' sheet
+
+  // Create a new report sheet called "Internal Findings_<current_date>"
+  Logger.log('Creating Internal Findings report...');
+  var internalFindingsSheet = SpreadsheetApp.create("Internal Findings_" + currentDate); // Create a new sheet
+
+  // Copy all sheets (Detail Data, Last Week Data, Counts, Location Counts) from the fixed spreadsheet to the new report
+  var internalFindingsSpreadsheet = SpreadsheetApp.openById(internalFindingsSheet.getId());
+  
+  // Copy each sheet from the fixed spreadsheet to the internal findings spreadsheet
+  copySheetToNewSpreadsheet(fixedSpreadsheet, internalFindingsSpreadsheet, 'Detail Data');
+  copySheetToNewSpreadsheet(fixedSpreadsheet, internalFindingsSpreadsheet, 'Last Week Data');
+  copySheetToNewSpreadsheet(fixedSpreadsheet, internalFindingsSpreadsheet, 'Counts');
+  copySheetToNewSpreadsheet(fixedSpreadsheet, internalFindingsSpreadsheet, 'Location Counts');
+  
+  // Move the newly created report to the specified folder
+  var folderId = 'YOUR_FOLDER_ID';  // Replace with the folder ID where the report should be created
+  var folder = DriveApp.getFolderById(folderId); // Get the folder by ID
+  folder.addFile(DriveApp.getFileById(internalFindingsSheet.getId()));
+  Logger.log('Internal Findings report created and moved to folder: ' + folder.getName());
+
+  // Send the email with the report attached
+  sendEmailWithReport(internalFindingsSheet);
+}
+
+// Helper function to copy a sheet from the fixed spreadsheet to the new report
+function copySheetToNewSpreadsheet(sourceSpreadsheet, destinationSpreadsheet, sheetName) {
+  var sourceSheet = sourceSpreadsheet.getSheetByName(sheetName);
+  if (sourceSheet) {
+    var copiedSheet = sourceSheet.copyTo(destinationSpreadsheet);
+    copiedSheet.setName(sheetName);
+    Logger.log('Sheet "' + sheetName + '" copied to the new report.');
+  } else {
+    Logger.log('Sheet "' + sheetName + '" not found in the source spreadsheet.');
+  }
+}
