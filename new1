@@ -114,7 +114,7 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
   // Update counts in 'Counts' and 'Location Counts' sheets
   Logger.log('Updating counts...');
   generateVPRCounts(); // Assuming this function updates the counts in the 'Counts' sheet
-  updateLocationCountsNewColumn(fixedSpreadsheet); // Assuming this function updates the 'Location Counts' sheet
+  updateLocationCountsNewColumn(fixedSpreadsheet); // Update the 'New' column in the 'Location Counts' sheet
 
   // Create a new report sheet called "Internal Findings_<current_date>"
   Logger.log('Creating Internal Findings report...');
