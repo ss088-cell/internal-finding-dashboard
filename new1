@@ -1,30 +1,16 @@
 function copyDataInBatches() {
-  // Source Google Sheet (replace with the actual source sheet ID)
+  // Step 1: Fetch data in batches from the source Google Sheet and create a temporary Google Sheet
   var sourceSheetId = 'SOURCE_SHEET_ID'; // Replace with your source sheet ID
   var sourceSpreadsheet = SpreadsheetApp.openById(sourceSheetId);
   var sourceSheet = sourceSpreadsheet.getSheetByName('Detail Data');
-  
+
   // Create a new Temporary Google Sheet (standalone)
   var temporarySpreadsheet = SpreadsheetApp.create('Temporary');
   var tempSheet = temporarySpreadsheet.getActiveSheet();
-  
+
   // Get the header row (first row)
   var header = sourceSheet.getRange(1, 1, 1, sourceSheet.getLastColumn()).getValues()[0];
-  
-  // Define required column names
-  var requiredColumns = [
-    "Host Name", "VPR", "Plugin ID", "Plugin Name", "IP", "Description", "Solution",
-    "First Discovered", "Last Observed", "Days Since First Discovered", 
-    "Days Since Last Observed", "Bus App Name", "VPR Remediation Due Date", 
-    "VPR Compliance", "Risk Type",
-    
-    // New columns added (14 more columns)
-    "Column1", "Column2", "Column3", "Column4", "Column5", "Column6", "Column7", "Column8", 
-    "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Issue Description / PM #", 
-    "Unique Identifier w Repository & Port"
-  ];
-
-  // Find the indexes of the required columns in the header
+  var requiredColumns = header;  // Assuming the required columns are the same as in source
   var columnIndexes = requiredColumns.map(function(colName) {
     var index = header.indexOf(colName);
     if (index === -1) {
@@ -41,20 +27,14 @@ function copyDataInBatches() {
   var batchSize = 5000; // Number of rows per batch
   var startRow = 2; // Start from the second row (skipping the header row)
   var endRow = Math.min(startRow + batchSize - 1, totalRows);
-  
+
   // Process data in batches
   function processBatch() {
     var dataRange = sourceSheet.getRange(startRow, 1, endRow - startRow + 1, sourceSheet.getLastColumn());
     var data = dataRange.getValues();
-    
-    // Filter out rows where 'Bus App Name' is not in the specified list
-    var appNames = ["App1", "App2", "App3", "App4", "App5", "App6", "App7", "App8", "App9", "App10", 
-                    "App11", "App12", "App13", "App14", "App15", "App16", "App17", "App18"];
-    
-    var filteredData = data.filter(function(row) {
-      var busAppName = row[header.indexOf("Bus App Name")]; // Get the "Bus App Name"
-      return appNames.includes(busAppName); // Keep rows where "Bus App Name" is in the appNames list
-    }).map(function(row) {
+
+    // Filter out rows based on your condition (optional, but useful if needed)
+    var filteredData = data.map(function(row) {
       // Extract only the required columns using column indexes
       return columnIndexes.map(function(index) {
         return row[index];
@@ -78,9 +58,9 @@ function copyDataInBatches() {
       // Once all data is processed, log the link to the new Temporary Sheet
       var sheetUrl = temporarySpreadsheet.getUrl();
       Logger.log('Temporary Sheet Link: ' + sheetUrl);
-      
-      // Now, handle the Platops Internal Findings logic
-      handlePlatopsInternalFindings(temporarySpreadsheet);  // Pass temporarySpreadsheet object here
+
+      // Step 2: Move data from Detail Data to Last Week Data in the fixed sheet
+      handlePlatopsInternalFindings(temporarySpreadsheet); // Pass the temporary spreadsheet
     }
   }
 
@@ -92,8 +72,8 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
   var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
   var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
   var sheet1 = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where data is pasted
-  
-  // Move data from 'Detail Data' to 'Last Week Data'
+
+  // Step 3: Check if Detail Data has data, if yes, move it to Last Week Data
   Logger.log('Moving data from Detail Data to Last Week Data...');
   if (sheet1.getLastRow() > 0) {
     var existingData = sheet1.getDataRange().getValues();
@@ -106,29 +86,25 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
   // Clear the 'Detail Data' sheet before copying new data
   sheet1.clear();
 
-  // Copy new data from the Temporary Sheet to 'Detail Data'
+  // Step 4: Paste data from the Temporary Sheet to Detail Data
   var newTempData = temporarySpreadsheet.getSheets()[0].getDataRange().getValues(); // Get current data from Temporary Sheet
   sheet1.getRange(1, 1, newTempData.length, newTempData[0].length).setValues(newTempData); // Paste the current data into Detail Data
   Logger.log('New data copied to Detail Data.');
 
-  // Update counts in 'Counts' and 'Location Counts' sheets
+  // Step 5: Fill the Counts Sheet with VPR counts
   Logger.log('Updating counts...');
-  generateVPRCounts(); // Assuming this function updates the counts in the 'Counts' sheet
-  updateLocationCountsNewColumn(fixedSpreadsheet); // Call the function to update 'New' column in the 'Location Counts' sheet
+  generateVPRCounts(fixedSpreadsheet); // Update the counts in the 'Counts' sheet
 
-  // Create a new report sheet called "Internal Findings_<current_date>"
+  // Step 6: Create a new report (Internal Findings_<current_date>) and copy data from fixed sheet
   Logger.log('Creating Internal Findings report...');
   var internalFindingsSheet = SpreadsheetApp.create("Internal Findings_" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd")); // Create a new sheet
-
-  // Copy all sheets (Detail Data, Last Week Data, Counts, Location Counts) from the fixed spreadsheet to the new report
   var internalFindingsSpreadsheet = SpreadsheetApp.openById(internalFindingsSheet.getId());
-  
-  // Copy each sheet from the fixed spreadsheet to the internal findings spreadsheet
+
+  // Copy all sheets (Detail Data, Last Week Data, Counts) from the fixed spreadsheet to the new report
   copySheetToNewSpreadsheet(fixedSpreadsheet, internalFindingsSpreadsheet, 'Detail Data');
   copySheetToNewSpreadsheet(fixedSpreadsheet, internalFindingsSpreadsheet, 'Last Week Data');
   copySheetToNewSpreadsheet(fixedSpreadsheet, internalFindingsSpreadsheet, 'Counts');
-  copySheetToNewSpreadsheet(fixedSpreadsheet, internalFindingsSpreadsheet, 'Location Counts');
-  
+
   // Move the newly created report to the specified folder
   var folderId = 'YOUR_FOLDER_ID';  // Replace with the folder ID where the report should be created
   var folder = DriveApp.getFolderById(folderId); // Get the folder by ID
@@ -152,34 +128,21 @@ function copySheetToNewSpreadsheet(sourceSpreadsheet, destinationSpreadsheet, sh
 }
 
 // VPR Counts generation logic
-function generateVPRCounts() {
-  var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
-  var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
-  
+function generateVPRCounts(fixedSpreadsheet) {
   var dataSheet = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where your data is
-  var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data'); // The sheet where last week's data is stored
-  
+  var countsSheet = fixedSpreadsheet.getSheetByName('Counts'); // The sheet where the counts will be stored
+
   // Retrieve the data range from the "Detail Data" sheet
   var data = dataSheet.getDataRange().getValues();
-  
-  // Get column indexes for VPR, Location, Bus App Name, Issue Description / PM #, and Unique Identifier
-  var header = data[0];
-  var vprIndex = header.indexOf("VPR");
-  var locationIndex = header.indexOf("Location");
-  var busAppNameIndex = header.indexOf("Bus App Name");
-  var issueDescriptionIndex = header.indexOf("Issue Description / PM #");
-  var riskTypeIndex = header.indexOf("Risk Type");
-  var uniqueIdentifierIndex = header.indexOf("Unique Identifier w Repository & Port");
 
   // Prepare the "Counts" sheet (if it doesn't already exist, create it)
-  var countsSheet = fixedSpreadsheet.getSheetByName('Counts');
   if (!countsSheet) {
     countsSheet = fixedSpreadsheet.insertSheet('Counts');
   } else {
     countsSheet.clear(); // Clear the sheet if it exists
   }
-  
-  // Set the headers for the "Counts" sheet
+
+  // Set headers for the "Counts" sheet
   countsSheet.getRange(1, 1).setValue("Location");
   countsSheet.getRange(1, 2).setValue("App Name");
   countsSheet.getRange(1, 3).setValue("CRTICAL");
@@ -187,38 +150,15 @@ function generateVPRCounts() {
   countsSheet.getRange(1, 5).setValue("MEDIUM");
   countsSheet.getRange(1, 6).setValue("LOW");
   countsSheet.getRange(1, 7).setValue("INFO");
-  countsSheet.getRange(1, 8).setValue("False Positive");
-  countsSheet.getRange(1, 9).setValue("Within Tolerance");
-  countsSheet.getRange(1, 10).setValue("Aged / Risk Treatment Plan");
-  countsSheet.getRange(1, 11).setValue("Patched");
-  countsSheet.getRange(1, 12).setValue("New");
 
-  // Define the VPR values and Locations
-  var vprValues = ["CRTICAL", "HIGH", "MEDIUM", "LOW", "INFO"];
-  var locations = ["Location 1", "Location 2", "Location 3"];
-  var appNames = ["App1", "App2"]; // Add more apps if needed
-  
   // Initialize a counter object to store the counts
   var counts = {};
 
-  // Get the last week's data
-  var lastWeekData = lastWeekDataSheet.getDataRange().getValues();
-  var lastWeekIdentifiers = lastWeekData.map(function(row) {
-    return row[uniqueIdentifierIndex]; // Get the unique identifiers from Last Week Data
-  });
-
-  // Loop through the data and count occurrences of each combination
+  // Loop through the data and count occurrences of each VPR value per location/app
   for (var i = 1; i < data.length; i++) {
-    var location = data[i][locationIndex];
-    var appName = data[i][busAppNameIndex];
-    var vpr = data[i][vprIndex];
-    var issueDescription = data[i][issueDescriptionIndex];
-    var riskType = data[i][riskTypeIndex];
-    var uniqueIdentifier = data[i][uniqueIdentifierIndex];
-
-    if (!locations.includes(location) || !appNames.includes(appName)) {
-      continue; // Skip if the location or app is not in the predefined lists
-    }
+    var location = data[i][data[0].indexOf('Location')];
+    var appName = data[i][data[0].indexOf('Bus App Name')];
+    var vpr = data[i][data[0].indexOf('VPR')];
 
     if (!counts[location]) {
       counts[location] = {};
@@ -230,43 +170,13 @@ function generateVPRCounts() {
         "HIGH": 0,
         "MEDIUM": 0,
         "LOW": 0,
-        "INFO": 0,
-        "False Positive": 0,
-        "Within Tolerance": 0,
-        "Aged / Risk Treatment Plan": 0,
-        "Patched": 0,
-        "New": 0 // Added counter for New
+        "INFO": 0
       };
     }
 
     // Increment the count for the VPR value
     if (counts[location][appName][vpr] !== undefined) {
       counts[location][appName][vpr]++;
-    }
-
-    // Count False Positive
-    if (issueDescription === "False Positive") {
-      counts[location][appName]["False Positive"]++;
-    }
-
-    // Count "Within Tolerance"
-    if (riskType === "Within Tolerance") {
-      counts[location][appName]["Within Tolerance"]++;
-    }
-
-    // Count "Aged / Risk Treatment Plan"
-    if (riskType === "Aged" || riskType === "Risk Treatment Plan") {
-      counts[location][appName]["Aged / Risk Treatment Plan"]++;
-    }
-
-    // Count Patched (if the unique identifier from last week's data is missing)
-    if (lastWeekIdentifiers.indexOf(uniqueIdentifier) === -1) {
-      counts[location][appName]["Patched"]++;
-    }
-
-    // Count New (if the unique identifier is new in Detail Data and not in Last Week Data)
-    if (lastWeekIdentifiers.indexOf(uniqueIdentifier) === -1) {
-      counts[location][appName]["New"]++;
     }
   }
 
@@ -279,17 +189,30 @@ function generateVPRCounts() {
                       counts[loc][app]["HIGH"], 
                       counts[loc][app]["MEDIUM"], 
                       counts[loc][app]["LOW"], 
-                      counts[loc][app]["INFO"], 
-                      counts[loc][app]["False Positive"], 
-                      counts[loc][app]["Within Tolerance"], 
-                      counts[loc][app]["Aged / Risk Treatment Plan"],
-                      counts[loc][app]["Patched"], 
-                      counts[loc][app]["New"]]; // Added New count
+                      counts[loc][app]["INFO"]];
       countsSheet.getRange(row, 1, 1, countRow.length).setValues([countRow]);
       row++;
     }
   }
 
-  Logger.log('VPR counts, False Positive, Within Tolerance, Aged/Risk Treatment Plan, Patched, and New generated and added to the "Counts" sheet.');
+  Logger.log('VPR counts generated and added to the "Counts" sheet.');
+}
+
+function sendEmailWithReport(internalFindingsSheet) {
+  var subject = "Internal Findings Report for " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  var body = "Hi Team,\n\nPlease find attached the Internal Findings Report.\n\nRegards,\nTeam";
+
+  // Get the file ID of the report
+  var reportFile = DriveApp.getFileById(internalFindingsSheet.getId());
+
+  // Send the email with the attached report
+  MailApp.sendEmail({
+    to: 'recipient@example.com', // Replace with the recipient's email address
+    subject: subject,
+    body: body,
+    attachments: [reportFile.getAs(MimeType.GOOGLE_SHEETS)]  // Attach the report as a Google Sheet
+  });
+
+  Logger.log("Email sent successfully with the report attached.");
 }
 
