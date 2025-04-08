@@ -1,0 +1,59 @@
+function handlePlatopsInternalFindings(temporarySpreadsheet) {
+  var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
+  var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
+  var sheet1 = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where data is pasted
+  var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data'); // The sheet where last week's data is stored
+
+  // Step 1: Check if 'Detail Data' has data and move it to 'Last Week Data'
+  if (sheet1.getLastRow() > 0) {
+    var existingData = sheet1.getDataRange().getValues();
+    Logger.log("Moving data from 'Detail Data' to 'Last Week Data'. Data count: " + existingData.length + " rows.");
+    
+    // If 'Last Week Data' does not exist, create it
+    if (!lastWeekDataSheet) {
+      lastWeekDataSheet = fixedSpreadsheet.insertSheet('Last Week Data');
+      Logger.log("Last Week Data sheet created.");
+    }
+    
+    // Paste data into 'Last Week Data'
+    lastWeekDataSheet.getRange(lastWeekDataSheet.getLastRow() + 1, 1, existingData.length, existingData[0].length).setValues(existingData);
+    Logger.log('Existing data moved to Last Week Data sheet.');
+    
+    // Step 2: Clear the 'Detail Data' sheet after moving data
+    sheet1.clear();
+    Logger.log('Detail Data sheet cleared.');
+  }
+
+  // Step 3: Copy the data from the Temporary Sheet to 'Detail Data'
+  var tempSheet = temporarySpreadsheet.getSheetByName('Detail Data'); // Get the "Detail Data" from the Temporary Sheet
+  var tempData = tempSheet.getDataRange().getValues(); // Get the data from Temporary Sheet's "Detail Data"
+  
+  Logger.log("Copying data from Temporary Sheet's 'Detail Data' to Fixed Sheet's 'Detail Data'. Data count: " + tempData.length + " rows.");
+  
+  // Copy data from the Temporary Sheet to the Fixed Sheet's "Detail Data"
+  sheet1.getRange(1, 1, tempData.length, tempData[0].length).setValues(tempData);
+  Logger.log('Data copied from Temporary Sheet to Fixed Sheet\'s Detail Data.');
+
+  // Step 4: Create a new report called 'Internal Findings_<current_date>'
+  var currentDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  var internalFindingsSheet = SpreadsheetApp.create("Internal Findings_" + currentDate); // Create a new sheet
+  var internalFindingsSpreadsheet = SpreadsheetApp.openById(internalFindingsSheet.getId());
+  
+  // Add Last Week Data sheet and Detail Data sheet to the new Internal Findings sheet
+  var lastWeekData = lastWeekDataSheet.getDataRange().getValues();
+  var lastWeekSheet = internalFindingsSpreadsheet.insertSheet('Last Week Data'); // Create the "Last Week Data" sheet
+  lastWeekSheet.getRange(1, 1, lastWeekData.length, lastWeekData[0].length).setValues(lastWeekData);
+  Logger.log('Last Week Data copied to Internal Findings sheet.');
+  
+  var detailData = sheet1.getDataRange().getValues();
+  var detailSheet = internalFindingsSpreadsheet.insertSheet('Detail Data'); // Create the "Detail Data" sheet
+  detailSheet.getRange(1, 1, detailData.length, detailData[0].length).setValues(detailData);
+  Logger.log('Detail Data copied to Internal Findings sheet.');
+
+  // Move the newly created report to the specified folder
+  var folderId = 'YOUR_FOLDER_ID';  // Replace with the folder ID where the report should be created
+  var folder = DriveApp.getFolderById(folderId); // Get the folder by ID
+  folder.addFile(DriveApp.getFileById(internalFindingsSheet.getId()));
+  
+  Logger.log('Internal Findings report created and moved to folder: ' + folder.getName());
+}
