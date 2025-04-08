@@ -5,27 +5,26 @@ function handlePlatopsInternalFindings(temporarySpreadsheet) {
   var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data'); // The sheet where last week's data is stored
 
   // Step 1: Check if 'Detail Data' has data and move it to 'Last Week Data'
-  if (sheet1) {  // Ensure 'Detail Data' sheet exists in the fixed sheet
-    if (sheet1.getLastRow() > 0) {
-      var existingData = sheet1.getDataRange().getValues();
-      Logger.log("Moving data from 'Detail Data' to 'Last Week Data'. Data count: " + existingData.length + " rows.");
+  if (sheet1 && sheet1.getLastRow() > 0) {
+    var existingData = sheet1.getDataRange().getValues();
+    Logger.log("Moving data from 'Detail Data' to 'Last Week Data'. Data count: " + existingData.length + " rows.");
     
-      // If 'Last Week Data' does not exist, create it
-      if (!lastWeekDataSheet) {
-        lastWeekDataSheet = fixedSpreadsheet.insertSheet('Last Week Data');
-        Logger.log("Last Week Data sheet created.");
-      }
-    
-      // Paste data into 'Last Week Data'
-      lastWeekDataSheet.getRange(lastWeekDataSheet.getLastRow() + 1, 1, existingData.length, existingData[0].length).setValues(existingData);
-      Logger.log('Existing data moved to Last Week Data sheet.');
-    
-      // Step 2: Clear the 'Detail Data' sheet after moving data
-      sheet1.clear();
-      Logger.log('Detail Data sheet cleared.');
+    // If 'Last Week Data' does not exist, create it
+    if (!lastWeekDataSheet) {
+      lastWeekDataSheet = fixedSpreadsheet.insertSheet('Last Week Data');
+      Logger.log("Last Week Data sheet created.");
     }
+    
+    // Overwrite data in 'Last Week Data'
+    lastWeekDataSheet.clear(); // Clear the existing data in "Last Week Data"
+    lastWeekDataSheet.getRange(1, 1, existingData.length, existingData[0].length).setValues(existingData);
+    Logger.log('Existing data moved to Last Week Data sheet.');
+    
+    // Step 2: Clear the 'Detail Data' sheet after moving data
+    sheet1.clear();
+    Logger.log('Detail Data sheet cleared.');
   } else {
-    Logger.log("No 'Detail Data' sheet found in the fixed spreadsheet.");
+    Logger.log("No data found in 'Detail Data' to move.");
   }
 
   // Step 3: Copy the data from the Temporary Sheet's "Sheet1" to 'Detail Data' in fixed sheet
