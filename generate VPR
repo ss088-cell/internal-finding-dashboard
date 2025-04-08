@@ -1,0 +1,81 @@
+function generateVPRCounts() {
+  var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
+  var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
+  var dataSheet = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where your data is
+  var countsSheet = fixedSpreadsheet.getSheetByName('This Week Count'); // The sheet where counts will be stored
+  
+  // Create the "This Week Count" sheet if it doesn't exist
+  if (!countsSheet) {
+    countsSheet = fixedSpreadsheet.insertSheet('This Week Count');
+    Logger.log("This Week Count sheet created.");
+  } else {
+    countsSheet.clear(); // Clear existing data
+  }
+
+  // Set the header for the "This Week Count" sheet
+  countsSheet.getRange(1, 1).setValue("Location");
+  countsSheet.getRange(1, 2).setValue("App Name");
+  countsSheet.getRange(1, 3).setValue("CRITICAL");
+  countsSheet.getRange(1, 4).setValue("HIGH");
+  countsSheet.getRange(1, 5).setValue("MEDIUM");
+  countsSheet.getRange(1, 6).setValue("LOW");
+  countsSheet.getRange(1, 7).setValue("INFO");
+  
+  // Retrieve data from the "Detail Data" sheet
+  var data = dataSheet.getDataRange().getValues();
+  
+  // Get column indexes for Location, Bus App Name, and VPR
+  var header = data[0];
+  var locationIndex = header.indexOf("Location");
+  var busAppNameIndex = header.indexOf("Bus App Name");
+  var vprIndex = header.indexOf("VPR");
+  
+  // Initialize an object to store counts
+  var counts = {};
+
+  // Loop through each row of data and count VPR values for each Location and App
+  for (var i = 1; i < data.length; i++) {
+    var location = data[i][locationIndex];
+    var appName = data[i][busAppNameIndex];
+    var vpr = data[i][vprIndex];
+    
+    // Initialize location and app if not already in the counts object
+    if (!counts[location]) {
+      counts[location] = {};
+    }
+    if (!counts[location][appName]) {
+      counts[location][appName] = {
+        "CRITICAL": 0,
+        "HIGH": 0,
+        "MEDIUM": 0,
+        "LOW": 0,
+        "INFO": 0
+      };
+    }
+    
+    // Increment the count for the appropriate VPR value
+    if (counts[location][appName][vpr] !== undefined) {
+      counts[location][appName][vpr]++;
+    }
+  }
+
+  // Write the counts to the "This Week Count" sheet
+  var row = 2; // Start from row 2 (after the header)
+  for (var location in counts) {
+    for (var appName in counts[location]) {
+      var countRow = [
+        location,
+        appName,
+        counts[location][appName]["CRITICAL"],
+        counts[location][appName]["HIGH"],
+        counts[location][appName]["MEDIUM"],
+        counts[location][appName]["LOW"],
+        counts[location][appName]["INFO"]
+      ];
+      countsSheet.getRange(row, 1, 1, countRow.length).setValues([countRow]);
+      row++;
+    }
+  }
+
+  Logger.log('VPR counts generated and added to the "This Week Count" sheet.');
+}
