@@ -1,0 +1,65 @@
+function generateWeeklyClosedCount() {
+  var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
+  var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
+  
+  // Create or get the "Weekly Closed Count" sheet
+  var weeklyClosedSheet = fixedSpreadsheet.getSheetByName('Weekly Closed Count');
+  if (!weeklyClosedSheet) {
+    weeklyClosedSheet = fixedSpreadsheet.insertSheet('Weekly Closed Count');
+    Logger.log("Weekly Closed Count sheet created.");
+  } else {
+    weeklyClosedSheet.clear(); // Clear existing data
+  }
+
+  // Set the header for the "Weekly Closed Count" sheet
+  weeklyClosedSheet.getRange(1, 1).setValue("Date");
+  weeklyClosedSheet.getRange(1, 2).setValue("Last Week Closed Count");
+
+  // Get current date in the format YYYY-MM-DD
+  var currentDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+
+  // Retrieve data from "Detail Data" and "Last Week Data" sheets
+  var detailDataSheet = fixedSpreadsheet.getSheetByName('Detail Data');
+  var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data');
+
+  var detailData = detailDataSheet.getDataRange().getValues();
+  var lastWeekData = lastWeekDataSheet.getDataRange().getValues();
+
+  // Get column index for "Unique Identifier w Repository & Port"
+  var header = detailData[0];
+  var uniqueIdentifierIndex = header.indexOf("Unique Identifier w Repository & Port");
+
+  // Create a set of Unique Identifiers from "Detail Data"
+  var detailDataIdentifiers = new Set();
+  for (var i = 1; i < detailData.length; i++) {
+    var uniqueIdentifier = detailData[i][uniqueIdentifierIndex];
+    detailDataIdentifiers.add(uniqueIdentifier);
+  }
+
+  // Count the closed entries (found in Last Week Data but not in Detail Data)
+  var closedCount = 0;
+  for (var j = 1; j < lastWeekData.length; j++) {
+    var uniqueIdentifier = lastWeekData[j][uniqueIdentifierIndex];
+    if (!detailDataIdentifiers.has(uniqueIdentifier)) {
+      closedCount++; // Increment the closed count
+    }
+  }
+
+  // Check if there's already an entry for the current date and overwrite it if necessary
+  var dateExists = false;
+  var rows = weeklyClosedSheet.getDataRange().getValues();
+  for (var k = 1; k < rows.length; k++) {
+    if (rows[k][0] === currentDate) {
+      weeklyClosedSheet.getRange(k + 1, 2).setValue(closedCount); // Overwrite the closed count for the current date
+      dateExists = true;
+      break;
+    }
+  }
+
+  // If date does not exist, add a new row with the current date and closed count
+  if (!dateExists) {
+    weeklyClosedSheet.appendRow([currentDate, closedCount]);
+  }
+
+  Logger.log('Weekly Closed Count generated and added to the "Weekly Closed Count" sheet.');
+}
