@@ -82,11 +82,15 @@ function processBatch(startRow) {
     var nextStartRow = endRow + 1;
     Logger.log("Processing next batch starting at row " + nextStartRow);
     
+    // Wait for 1 second to ensure the trigger is set properly
+    Utilities.sleep(1000); // Sleep for 1 second
+    
     // Create a time-based trigger to call processBatch with the next batch of rows
     ScriptApp.newTrigger('processBatch')
       .timeBased()
       .after(1000)  // Trigger after 1 second to avoid timeout
       .create();
+    Logger.log("Trigger for next batch has been set.");
   } else {
     Logger.log('Weekly Closed Count completed.');
   }
