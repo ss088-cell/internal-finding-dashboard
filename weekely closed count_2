@@ -17,11 +17,16 @@ function startGenerateWeeklyClosedCount() {
   weeklyClosedSheet.getRange(1, 2).setValue("Last Week Closed Count");
 
   // Start processing the first batch from row 2 (after header)
-  processBatch(2);
+  // Store the initial starting row (2) in Script Properties
+  PropertiesService.getScriptProperties().setProperty('startRow', 2);
+  
+  // Start processing the first batch
+  continueProcessingBatch();
 }
 
-// This function processes data in batches
-function processBatch(startRow) {
+// This function processes data in batches, reading startRow from Script Properties
+function continueProcessingBatch() {
+  var startRow = Number(PropertiesService.getScriptProperties().getProperty('startRow')); // Retrieve the startRow
   var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
   var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
 
@@ -81,12 +86,12 @@ function processBatch(startRow) {
   if (endRow < lastWeekData.length) {
     var nextStartRow = endRow + 1;
     Logger.log("Processing next batch starting at row " + nextStartRow);
+
+    // Store the next start row in Script Properties
+    PropertiesService.getScriptProperties().setProperty('startRow', nextStartRow);
     
-    // Wait for 1 second to ensure the trigger is set properly
-    Utilities.sleep(1000); // Sleep for 1 second
-    
-    // Create a time-based trigger to call processBatch with the next batch of rows
-    ScriptApp.newTrigger('processBatch')
+    // Create a time-based trigger to call continueProcessingBatch after 1 second
+    ScriptApp.newTrigger('continueProcessingBatch')
       .timeBased()
       .after(1000)  // Trigger after 1 second to avoid timeout
       .create();
