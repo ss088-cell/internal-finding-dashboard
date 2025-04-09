@@ -5,6 +5,9 @@ function compareDataAndCountClosed() {
   var lastWeekSheet = ss.getSheetByName('Last week data');
   var closedCountSheet = ss.getSheetByName('Weekly Closed Count');
   
+  // Log the start of the comparison
+  Logger.log("Starting the comparison of 'Unique Identifier w Repository & Port' data.");
+
   // Get the "Unique Identifier w Repository & Port" columns (Column U - 21) from both sheets
   var detailData = detailSheet.getRange('U2:U' + detailSheet.getLastRow()).getValues(); // Column U
   var lastWeekData = lastWeekSheet.getRange('U2:U' + lastWeekSheet.getLastRow()).getValues(); // Column U
@@ -15,6 +18,9 @@ function compareDataAndCountClosed() {
   // Initialize the closed count
   var closedCount = 0;
   
+  // Log data comparison
+  Logger.log("Comparing 'Last Week Data' with 'Detail Data'...");
+
   // Loop through last week data and check if it's missing in detail data
   for (var i = 0; i < lastWeekData.length; i++) {
     if (!detailDataSet.has(lastWeekData[i][0])) {
@@ -22,18 +28,25 @@ function compareDataAndCountClosed() {
     }
   }
 
+  // Log after comparison
+  Logger.log("Data comparison complete. Found " + closedCount + " closed entries.");
+
   // Check if the "Weekly Closed Count" sheet exists, if not, create it
   if (!closedCountSheet) {
     closedCountSheet = ss.insertSheet('Weekly Closed Count');
     // Add headers
     closedCountSheet.getRange('A1').setValue('Date');
     closedCountSheet.getRange('B1').setValue('Closed Count');
+    Logger.log("Created 'Weekly Closed Count' sheet with headers.");
   }
 
   // Get today's date in YYYY-MM-DD format
   var today = new Date();
   var formattedDate = Utilities.formatDate(today, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   
+  // Log the date check
+  Logger.log("Checking if the data for today (" + formattedDate + ") already exists.");
+
   // Check if an entry for today already exists
   var data = closedCountSheet.getDataRange().getValues();
   var rowIndex = -1;
@@ -44,10 +57,15 @@ function compareDataAndCountClosed() {
     }
   }
 
-  // If entry exists for today, override it; otherwise, append the new data
+  // Log the result of date check
   if (rowIndex > 0) {
+    Logger.log("Entry for today's date exists. Updating the closed count.");
     closedCountSheet.getRange(rowIndex, 2).setValue(closedCount);
   } else {
+    Logger.log("No entry found for today's date. Adding a new entry.");
     closedCountSheet.appendRow([formattedDate, closedCount]);
   }
+
+  // Log the successful update
+  Logger.log("Data updated successfully in 'Weekly Closed Count' sheet.");
 }
