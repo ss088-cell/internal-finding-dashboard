@@ -20,16 +20,15 @@ function generateVPRCounts() {
   countsSheet.getRange(1, 5).setValue("MEDIUM");
   countsSheet.getRange(1, 6).setValue("LOW");
   countsSheet.getRange(1, 7).setValue("INFO");
-
+  
   // Retrieve data from the "Detail Data" sheet
   var data = dataSheet.getDataRange().getValues();
   
-  // Get column indexes for Location, Bus App Name, VPR, and Issue Description / PM #
+  // Get column indexes for Location, Bus App Name, and VPR
   var header = data[0];
   var locationIndex = header.indexOf("Location");
   var busAppNameIndex = header.indexOf("Bus App Name");
   var vprIndex = header.indexOf("VPR");
-  var issueDescriptionIndex = header.indexOf("Issue Description / PM #");
   
   // Initialize an object to store counts
   var counts = {};
@@ -39,7 +38,6 @@ function generateVPRCounts() {
     var location = data[i][locationIndex];
     var appName = data[i][busAppNameIndex];
     var vpr = data[i][vprIndex];
-    var issueDescription = data[i][issueDescriptionIndex];
     
     // Initialize location and app if not already in the counts object
     if (!counts[location]) {
@@ -51,8 +49,7 @@ function generateVPRCounts() {
         "HIGH": 0,
         "MEDIUM": 0,
         "LOW": 0,
-        "INFO": 0,
-        "False Positive": 0
+        "INFO": 0
       };
     }
     
@@ -60,45 +57,25 @@ function generateVPRCounts() {
     if (counts[location][appName][vpr] !== undefined) {
       counts[location][appName][vpr]++;
     }
-    
-    // Track False Positive entries
-    if (issueDescription === "False Positive") {
-      counts[location][appName]["False Positive"]++;
-    }
   }
 
-  // Write the adjusted counts to the "This Week Count" sheet
+  // Write the counts to the "This Week Count" sheet
   var row = 2; // Start from row 2 (after the header)
   for (var location in counts) {
     for (var appName in counts[location]) {
-      // Adjust the VPR counts by subtracting False Positive entries
-      var criticalCount = counts[location][appName]["CRITICAL"] - counts[location][appName]["False Positive"];
-      var highCount = counts[location][appName]["HIGH"] - counts[location][appName]["False Positive"];
-      var mediumCount = counts[location][appName]["MEDIUM"] - counts[location][appName]["False Positive"];
-      var lowCount = counts[location][appName]["LOW"] - counts[location][appName]["False Positive"];
-      var infoCount = counts[location][appName]["INFO"] - counts[location][appName]["False Positive"];
-      
-      // Ensure counts don't go negative
-      criticalCount = Math.max(criticalCount, 0);
-      highCount = Math.max(highCount, 0);
-      mediumCount = Math.max(mediumCount, 0);
-      lowCount = Math.max(lowCount, 0);
-      infoCount = Math.max(infoCount, 0);
-      
-      // Write the adjusted counts to the sheet
       var countRow = [
         location,
         appName,
-        criticalCount,
-        highCount,
-        mediumCount,
-        lowCount,
-        infoCount
+        counts[location][appName]["CRITICAL"],
+        counts[location][appName]["HIGH"],
+        counts[location][appName]["MEDIUM"],
+        counts[location][appName]["LOW"],
+        counts[location][appName]["INFO"]
       ];
       countsSheet.getRange(row, 1, 1, countRow.length).setValues([countRow]);
       row++;
     }
   }
 
-  Logger.log('VPR counts generated and adjusted by False Positive, and added to the "This Week Count" sheet.');
+  Logger.log('VPR counts generated and added to the "This Week Count" sheet.');
 }
