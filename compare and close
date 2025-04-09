@@ -1,0 +1,53 @@
+function compareDataAndCountClosed() {
+  var sheetId = 'YOUR_SHEET_ID'; // Replace with your Google Sheet ID
+  var ss = SpreadsheetApp.openById(sheetId); // Open the Google Sheet by ID
+  var detailSheet = ss.getSheetByName('Detail Data');
+  var lastWeekSheet = ss.getSheetByName('Last week data');
+  var closedCountSheet = ss.getSheetByName('Weekly Closed Count');
+  
+  // Get the "Unique Identifier w Repository & Port" columns (Column U - 21) from both sheets
+  var detailData = detailSheet.getRange('U2:U' + detailSheet.getLastRow()).getValues(); // Column U
+  var lastWeekData = lastWeekSheet.getRange('U2:U' + lastWeekSheet.getLastRow()).getValues(); // Column U
+  
+  // Create a set for fast lookup
+  var detailDataSet = new Set(detailData.flat());
+  
+  // Initialize the closed count
+  var closedCount = 0;
+  
+  // Loop through last week data and check if it's missing in detail data
+  for (var i = 0; i < lastWeekData.length; i++) {
+    if (!detailDataSet.has(lastWeekData[i][0])) {
+      closedCount++;
+    }
+  }
+
+  // Check if the "Weekly Closed Count" sheet exists, if not, create it
+  if (!closedCountSheet) {
+    closedCountSheet = ss.insertSheet('Weekly Closed Count');
+    // Add headers
+    closedCountSheet.getRange('A1').setValue('Date');
+    closedCountSheet.getRange('B1').setValue('Closed Count');
+  }
+
+  // Get today's date in YYYY-MM-DD format
+  var today = new Date();
+  var formattedDate = Utilities.formatDate(today, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  
+  // Check if an entry for today already exists
+  var data = closedCountSheet.getDataRange().getValues();
+  var rowIndex = -1;
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] === formattedDate) {
+      rowIndex = i + 1; // +1 because data starts from row 2
+      break;
+    }
+  }
+
+  // If entry exists for today, override it; otherwise, append the new data
+  if (rowIndex > 0) {
+    closedCountSheet.getRange(rowIndex, 2).setValue(closedCount);
+  } else {
+    closedCountSheet.appendRow([formattedDate, closedCount]);
+  }
+}
