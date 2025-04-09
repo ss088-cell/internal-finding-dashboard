@@ -1,4 +1,5 @@
-function generateWeeklyClosedCount() {
+// This function will start batch processing
+function startGenerateWeeklyClosedCount() {
   var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
   var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
   
@@ -15,37 +16,45 @@ function generateWeeklyClosedCount() {
   weeklyClosedSheet.getRange(1, 1).setValue("Date");
   weeklyClosedSheet.getRange(1, 2).setValue("Last Week Closed Count");
 
-  // Get current date in the format YYYY-MM-DD
-  var currentDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  // Start processing the first batch from row 2 (after header)
+  processBatch(2);
+}
 
-  // Retrieve data from "Detail Data" and "Last Week Data" sheets
+// This function processes data in batches
+function processBatch(startRow) {
+  var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
+  var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
+
+  var weeklyClosedSheet = fixedSpreadsheet.getSheetByName('Weekly Closed Count');
   var detailDataSheet = fixedSpreadsheet.getSheetByName('Detail Data');
   var lastWeekDataSheet = fixedSpreadsheet.getSheetByName('Last Week Data');
 
   var detailData = detailDataSheet.getDataRange().getValues();
   var lastWeekData = lastWeekDataSheet.getDataRange().getValues();
 
-  // Get column index for "Unique Identifier w Repository & Port"
   var header = detailData[0];
   var uniqueIdentifierIndex = header.indexOf("Unique Identifier w Repository & Port");
 
-  // Create a set of Unique Identifiers from "Detail Data"
   var detailDataIdentifiers = new Set();
   for (var i = 1; i < detailData.length; i++) {
     var uniqueIdentifier = detailData[i][uniqueIdentifierIndex];
     detailDataIdentifiers.add(uniqueIdentifier);
   }
 
-  // Count the closed entries (found in Last Week Data but not in Detail Data)
   var closedCount = 0;
-  for (var j = 1; j < lastWeekData.length; j++) {
+  var batchSize = 1000;  // Process 1000 rows at a time
+  var endRow = Math.min(startRow + batchSize - 1, lastWeekData.length);
+  
+  // Process data for this batch
+  for (var j = startRow; j <= endRow; j++) {
     var uniqueIdentifier = lastWeekData[j][uniqueIdentifierIndex];
     if (!detailDataIdentifiers.has(uniqueIdentifier)) {
       closedCount++; // Increment the closed count
     }
   }
 
-  // Check if there's already an entry for the current date and overwrite it if necessary
+  // Write the closed count to the Weekly Closed Count sheet
+  var currentDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
   var dateExists = false;
   var rows = weeklyClosedSheet.getDataRange().getValues();
   for (var k = 1; k < rows.length; k++) {
@@ -61,5 +70,16 @@ function generateWeeklyClosedCount() {
     weeklyClosedSheet.appendRow([currentDate, closedCount]);
   }
 
-  Logger.log('Weekly Closed Count generated and added to the "Weekly Closed Count" sheet.');
+  // If there is more data to process, trigger the next batch
+  if (endRow < lastWeekData.length) {
+    var nextStartRow = endRow + 1;
+    ScriptApp.newTrigger('processBatch')
+      .timeBased()
+      .after(1000)  // Trigger after 1 second to avoid timeout
+      .create();
+    
+    Logger.log("Processing next batch starting at row " + nextStartRow);
+  } else {
+    Logger.log('Weekly Closed Count completed.');
+  }
 }
