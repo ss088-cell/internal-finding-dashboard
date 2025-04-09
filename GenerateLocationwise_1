@@ -1,0 +1,92 @@
+function generateVPRLocationWise() {
+  var fixedSheetId = 'FIXED_SHEET_ID'; // Replace with the actual fixed sheet ID
+  var fixedSpreadsheet = SpreadsheetApp.openById(fixedSheetId);
+  var dataSheet = fixedSpreadsheet.getSheetByName('Detail Data'); // The sheet where your data is
+  var locationWiseSheet = fixedSpreadsheet.getSheetByName('Location Wise Count'); // The sheet where counts will be stored
+  
+  // Create the "Location Wise Count" sheet if it doesn't exist
+  if (!locationWiseSheet) {
+    locationWiseSheet = fixedSpreadsheet.insertSheet('Location Wise Count');
+    Logger.log("Location Wise Count sheet created.");
+  } else {
+    locationWiseSheet.clear(); // Clear existing data
+  }
+
+  // Set the header for the "Location Wise Count" sheet
+  locationWiseSheet.getRange(1, 1).setValue("Location");
+  locationWiseSheet.getRange(1, 2).setValue("CRITICAL");
+  locationWiseSheet.getRange(1, 3).setValue("HIGH");
+  locationWiseSheet.getRange(1, 4).setValue("MEDIUM");
+  locationWiseSheet.getRange(1, 5).setValue("LOW");
+  locationWiseSheet.getRange(1, 6).setValue("INFO");
+  locationWiseSheet.getRange(1, 7).setValue("Overall Total");
+  locationWiseSheet.getRange(1, 8).setValue("Aged/Risk Treatment Plan");
+  locationWiseSheet.getRange(1, 9).setValue("Within Tolerance");
+  
+  // Retrieve data from the "Detail Data" sheet
+  var data = dataSheet.getDataRange().getValues();
+  
+  // Get column indexes for Location, VPR, Risk Type
+  var header = data[0];
+  var locationIndex = header.indexOf("Location");
+  var vprIndex = header.indexOf("VPR");
+  var riskTypeIndex = header.indexOf("Risk Type");
+  
+  // Initialize an object to store counts
+  var locationCounts = {};
+
+  // Loop through each row of data and count VPR values for each Location
+  for (var i = 1; i < data.length; i++) {
+    var location = data[i][locationIndex];
+    var vpr = data[i][vprIndex];
+    var riskType = data[i][riskTypeIndex];
+    
+    // Initialize location if not already in the counts object
+    if (!locationCounts[location]) {
+      locationCounts[location] = {
+        "CRITICAL": 0,
+        "HIGH": 0,
+        "MEDIUM": 0,
+        "LOW": 0,
+        "INFO": 0,
+        "Aged/Risk Treatment Plan": 0, // Initialize Aged/Risk Treatment Plan count
+        "Within Tolerance": 0, // Initialize Within Tolerance count
+        "Overall Total": 0 // Initialize Overall total count
+      };
+    }
+    
+    // Increment the count for the appropriate VPR value
+    if (locationCounts[location][vpr] !== undefined) {
+      locationCounts[location][vpr]++;
+      locationCounts[location]["Overall Total"]++; // Increment Overall total
+    }
+
+    // Count Aged/Risk Treatment Plan and Within Tolerance based on Risk Type
+    if (riskType === "Aged" || riskType === "Risk Treatment Plan") {
+      locationCounts[location]["Aged/Risk Treatment Plan"]++;
+    }
+    if (riskType === "Within Tolerance") {
+      locationCounts[location]["Within Tolerance"]++;
+    }
+  }
+
+  // Write the counts to the "Location Wise Count" sheet
+  var row = 2; // Start from row 2 (after the header)
+  for (var location in locationCounts) {
+    var countRow = [
+      location,
+      locationCounts[location]["CRITICAL"],
+      locationCounts[location]["HIGH"],
+      locationCounts[location]["MEDIUM"],
+      locationCounts[location]["LOW"],
+      locationCounts[location]["INFO"],
+      locationCounts[location]["Overall Total"],
+      locationCounts[location]["Aged/Risk Treatment Plan"],
+      locationCounts[location]["Within Tolerance"]
+    ];
+    locationWiseSheet.getRange(row, 1, 1, countRow.length).setValues([countRow]);
+    row++;
+  }
+
+  Logger.log('Location Wise VPR counts generated and added to the "Location Wise Count" sheet.');
+}
