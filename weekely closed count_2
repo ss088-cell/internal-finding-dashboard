@@ -70,15 +70,23 @@ function processBatch(startRow) {
     weeklyClosedSheet.appendRow([currentDate, closedCount]);
   }
 
+  // Log whether the count was added/updated
+  if (dateExists) {
+    Logger.log('Updated the closed count for ' + currentDate + ': ' + closedCount);
+  } else {
+    Logger.log('Added new entry for ' + currentDate + ' with closed count: ' + closedCount);
+  }
+
   // If there is more data to process, trigger the next batch
   if (endRow < lastWeekData.length) {
     var nextStartRow = endRow + 1;
+    Logger.log("Processing next batch starting at row " + nextStartRow);
+    
+    // Create a time-based trigger to call processBatch with the next batch of rows
     ScriptApp.newTrigger('processBatch')
       .timeBased()
       .after(1000)  // Trigger after 1 second to avoid timeout
       .create();
-    
-    Logger.log("Processing next batch starting at row " + nextStartRow);
   } else {
     Logger.log('Weekly Closed Count completed.');
   }
