@@ -1,0 +1,88 @@
+function compareDataAndCountClosed() {
+  var sheetId = 'YOUR_SHEET_ID'; // Replace with your Google Sheet ID
+  var ss = SpreadsheetApp.openById(sheetId); // Open the Google Sheet by ID
+  var detailSheet = ss.getSheetByName('Detail Data');
+  var lastWeekSheet = ss.getSheetByName('Last week data');
+  var closedCountSheet = ss.getSheetByName('Weekly Closed Count');
+  
+  // Log the start of the comparison
+  Logger.log("Starting the comparison of 'Unique Identifier w Repository & Port' data.");
+
+  // Get the "Unique Identifier w Repository & Port" columns (Column U - 21) and "Location" columns (Column Q - 17) from both sheets
+  var detailData = detailSheet.getRange('U2:U' + detailSheet.getLastRow()).getValues(); // Column U (Unique Identifier)
+  var lastWeekData = lastWeekSheet.getRange('U2:U' + lastWeekSheet.getLastRow()).getValues(); // Column U (Unique Identifier)
+  var detailLocations = detailSheet.getRange('Q2:Q' + detailSheet.getLastRow()).getValues(); // Column Q (Location)
+  var lastWeekLocations = lastWeekSheet.getRange('Q2:Q' + lastWeekSheet.getLastRow()).getValues(); // Column Q (Location)
+  
+  // Create a set for fast lookup of Unique Identifiers from Detail Data
+  var detailDataSet = new Set(detailData.flat());
+  
+  // Initialize an object to store the closed count for each location
+  var locationClosedCount = {};
+  
+  // Log data comparison
+  Logger.log("Comparing 'Last Week Data' with 'Detail Data'...");
+
+  // Loop through last week data and check if it's missing in detail data
+  for (var i = 0; i < lastWeekData.length; i++) {
+    var lastWeekID = lastWeekData[i][0];
+    var lastWeekLocation = lastWeekLocations[i][0];
+    
+    if (!detailDataSet.has(lastWeekID)) {
+      // Increment the closed count for the location
+      if (locationClosedCount[lastWeekLocation]) {
+        locationClosedCount[lastWeekLocation]++;
+      } else {
+        locationClosedCount[lastWeekLocation] = 1;
+      }
+    }
+  }
+
+  // Log after comparison
+  Logger.log("Data comparison complete. Found " + Object.keys(locationClosedCount).length + " locations with closed entries.");
+
+  // Check if the "Weekly Closed Count" sheet exists, if not, create it
+  if (!closedCountSheet) {
+    closedCountSheet = ss.insertSheet('Weekly Closed Count');
+    // Add headers
+    closedCountSheet.getRange('A1').setValue('Date');
+    closedCountSheet.getRange('B1').setValue('Location');
+    closedCountSheet.getRange('C1').setValue('Closed Count');
+    Logger.log("Created 'Weekly Closed Count' sheet with headers.");
+  }
+
+  // Get today's date in YYYY-MM-DD format
+  var today = new Date();
+  var formattedDate = Utilities.formatDate(today, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  
+  // Log the date check
+  Logger.log("Checking if the data for today (" + formattedDate + ") already exists.");
+
+  // Check if an entry for today already exists
+  var data = closedCountSheet.getDataRange().getValues();
+  var rowIndex = -1;
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] === formattedDate) {
+      rowIndex = i + 1; // +1 because data starts from row 2
+      break;
+    }
+  }
+
+  // Log the result of date check
+  if (rowIndex > 0) {
+    Logger.log("Entry for today's date exists. Updating the closed count.");
+    // Update the existing data for today, including locations and counts
+    for (var location in locationClosedCount) {
+      closedCountSheet.appendRow([formattedDate, location, locationClosedCount[location]]);
+    }
+  } else {
+    Logger.log("No entry found for today's date. Adding a new entry.");
+    // Add the location-wise closed counts for today
+    for (var location in locationClosedCount) {
+      closedCountSheet.appendRow([formattedDate, location, locationClosedCount[location]]);
+    }
+  }
+
+  // Log the successful update
+  Logger.log("Data updated successfully in 'Weekly Closed Count' sheet.");
+}
