@@ -44,7 +44,7 @@ function compareDataAndCountClosed() {
   // Check if the "Weekly Closed Count" sheet exists, if not, create it
   if (!closedCountSheet) {
     closedCountSheet = ss.insertSheet('Weekly Closed Count');
-    // Add headers
+    // Add headers if the sheet was created
     closedCountSheet.getRange('A1').setValue('Date');
     closedCountSheet.getRange('B1').setValue('Location');
     closedCountSheet.getRange('C1').setValue('Closed Count');
@@ -60,24 +60,40 @@ function compareDataAndCountClosed() {
 
   // Check if an entry for today already exists
   var data = closedCountSheet.getDataRange().getValues();
-  var rowIndex = -1;
-  for (var i = 0; i < data.length; i++) {
+  var dateExists = false;
+
+  // Loop through data to check if the date exists
+  for (var i = 1; i < data.length; i++) {
     if (data[i][0] === formattedDate) {
-      rowIndex = i + 1; // +1 because data starts from row 2
+      dateExists = true;
       break;
     }
   }
 
   // Log the result of date check
-  if (rowIndex > 0) {
+  if (dateExists) {
     Logger.log("Entry for today's date exists. Updating the closed count.");
-    // Update the existing data for today, including locations and counts
+    // If the date exists, update the closed count for each location
     for (var location in locationClosedCount) {
-      closedCountSheet.appendRow([formattedDate, location, locationClosedCount[location]]);
+      // Find the row for the location and update its count
+      var locationRow = closedCountSheet.getRange('B2:B' + closedCountSheet.getLastRow()).getValues();
+      var locationFound = false;
+      for (var i = 0; i < locationRow.length; i++) {
+        if (locationRow[i][0] === location) {
+          closedCountSheet.getRange(i + 2, 3).setValue(locationClosedCount[location]); // Update the closed count
+          locationFound = true;
+          break;
+        }
+      }
+
+      // If location is not found, add a new row for that location
+      if (!locationFound) {
+        closedCountSheet.appendRow([formattedDate, location, locationClosedCount[location]]);
+      }
     }
   } else {
     Logger.log("No entry found for today's date. Adding a new entry.");
-    // Add the location-wise closed counts for today
+    // If no entry for today, add a new entry for each location
     for (var location in locationClosedCount) {
       closedCountSheet.appendRow([formattedDate, location, locationClosedCount[location]]);
     }
