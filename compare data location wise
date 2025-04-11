@@ -54,14 +54,13 @@ function countPatchedFindings(detailData, lastWeekData, location) {
   return lastWeekIdentifiers.filter(identifier => !detailIdentifiers.includes(identifier)).length;
 }
 
-// Count Unpatched findings: Identifiers present in both but have changes
+// Count Unpatched findings: Identifiers present in both this week and last week with the same location
 function countUnpatchedFindings(detailData, lastWeekData, location) {
   const detailIdentifiers = getIdentifiersByLocation(detailData, location);
   const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, location);
 
   return detailIdentifiers.filter(identifier => 
-    lastWeekIdentifiers.includes(identifier) &&
-    hasChanges(identifier, detailData, lastWeekData, location)
+    lastWeekIdentifiers.includes(identifier)
   ).length;
 }
 
@@ -69,13 +68,4 @@ function countUnpatchedFindings(detailData, lastWeekData, location) {
 function getIdentifiersByLocation(data, location) {
   return data.filter(row => row[data[0].indexOf('Location')] === location)
              .map(row => row[data[0].indexOf('Unique Identifier w Repository & Port')]);
-}
-
-// Check if there are changes for an identifier between this week and last week
-function hasChanges(identifier, detailData, lastWeekData, location) {
-  const detailRow = detailData.find(row => row[detailData[0].indexOf('Unique Identifier w Repository & Port')] === identifier && row[detailData[0].indexOf('Location')] === location);
-  const lastWeekRow = lastWeekData.find(row => row[lastWeekData[0].indexOf('Unique Identifier w Repository & Port')] === identifier && row[lastWeekData[0].indexOf('Location')] === location);
-
-  // Compare any other columns you want to track for changes (example: "Status", "Description")
-  return detailRow && lastWeekRow && detailRow.join() !== lastWeekRow.join();
 }
