@@ -8,6 +8,10 @@ function generateLastWeekClosedCount() {
   const detailData = detailSheet.getDataRange().getValues();
   const lastWeekData = lastWeekSheet.getDataRange().getValues();
 
+  // Get column indices for "Location" and "Unique Identifier w Repository & Port"
+  const locationColumnIndex = detailData[0].indexOf('Location');
+  const identifierColumnIndex = detailData[0].indexOf('Unique Identifier w Repository & Port');
+
   // Create or clear the "Last Week Closed Count" sheet
   let closedCountSheet = ss.getSheetByName('Last Week Closed Count');
   if (!closedCountSheet) {
@@ -23,15 +27,15 @@ function generateLastWeekClosedCount() {
 
   // Collect all unique locations from both sheets
   const locations = [...new Set([
-    ...detailData.map(row => row[detailData[0].indexOf('Location')]),
-    ...lastWeekData.map(row => row[lastWeekData[0].indexOf('Location')])
+    ...detailData.slice(1).map(row => row[locationColumnIndex]),
+    ...lastWeekData.slice(1).map(row => row[locationColumnIndex])
   ])];
 
   // Iterate through each location and count New, Patched, and Unpatched findings
   locations.forEach(location => {
-    const newFindings = countNewFindings(detailData, lastWeekData, location);
-    const patchedFindings = countPatchedFindings(detailData, lastWeekData, location);
-    const unpatchedFindings = countUnpatchedFindings(detailData, lastWeekData, location);
+    const newFindings = countNewFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, location);
+    const patchedFindings = countPatchedFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, location);
+    const unpatchedFindings = countUnpatchedFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, location);
 
     // Output results to the new sheet
     closedCountSheet.appendRow([today, location, patchedFindings, newFindings, unpatchedFindings]);
@@ -39,25 +43,25 @@ function generateLastWeekClosedCount() {
 }
 
 // Count New findings: Present in Detail Data but not in Last Week Data
-function countNewFindings(detailData, lastWeekData, location) {
-  const detailIdentifiers = getIdentifiersByLocation(detailData, location);
-  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, location);
+function countNewFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, location) {
+  const detailIdentifiers = getIdentifiersByLocation(detailData, locationColumnIndex, identifierColumnIndex, location);
+  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, locationColumnIndex, identifierColumnIndex, location);
 
   return detailIdentifiers.filter(identifier => !lastWeekIdentifiers.includes(identifier)).length;
 }
 
 // Count Patched findings: Present in Last Week Data but not in Detail Data
-function countPatchedFindings(detailData, lastWeekData, location) {
-  const detailIdentifiers = getIdentifiersByLocation(detailData, location);
-  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, location);
+function countPatchedFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, location) {
+  const detailIdentifiers = getIdentifiersByLocation(detailData, locationColumnIndex, identifierColumnIndex, location);
+  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, locationColumnIndex, identifierColumnIndex, location);
 
   return lastWeekIdentifiers.filter(identifier => !detailIdentifiers.includes(identifier)).length;
 }
 
 // Count Unpatched findings: Identifiers present in both this week and last week with the same location
-function countUnpatchedFindings(detailData, lastWeekData, location) {
-  const detailIdentifiers = getIdentifiersByLocation(detailData, location);
-  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, location);
+function countUnpatchedFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, location) {
+  const detailIdentifiers = getIdentifiersByLocation(detailData, locationColumnIndex, identifierColumnIndex, location);
+  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, locationColumnIndex, identifierColumnIndex, location);
 
   return detailIdentifiers.filter(identifier => 
     lastWeekIdentifiers.includes(identifier)
@@ -65,7 +69,7 @@ function countUnpatchedFindings(detailData, lastWeekData, location) {
 }
 
 // Get identifiers by location
-function getIdentifiersByLocation(data, location) {
-  return data.filter(row => row[data[0].indexOf('Location')] === location)
-             .map(row => row[data[0].indexOf('Unique Identifier w Repository & Port')]);
+function getIdentifiersByLocation(data, locationColumnIndex, identifierColumnIndex, location) {
+  return data.slice(1).filter(row => row[locationColumnIndex] === location)
+             .map(row => row[identifierColumnIndex]);
 }
