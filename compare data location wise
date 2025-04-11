@@ -79,7 +79,7 @@ function compareDataAndCountClosed() {
       var locationFound = false;
       for (var i = 0; i < locationRow.length; i++) {
         if (locationRow[i][0] === location) {
-          closedCountSheet.getRange(i + 2, 3).setValue(locationClosedCount[location]); // Update the closed count in column C
+          closedCountSheet.getRange(i + 2, 3).setValue(locationClosedCount[location]); // Correcting the column to update the Closed Count (Column C)
           locationFound = true;
           break;
         }
