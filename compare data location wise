@@ -49,6 +49,14 @@ function compareDataAndCountClosed() {
     closedCountSheet.getRange('B1').setValue('Location');
     closedCountSheet.getRange('C1').setValue('Closed Count');
     Logger.log("Created 'Weekly Closed Count' sheet with headers.");
+  } else {
+    // If the sheet exists, ensure the "Location" column exists
+    var headers = closedCountSheet.getRange('A1:C1').getValues()[0];
+    if (headers.indexOf('Location') === -1) {
+      // If the "Location" column doesn't exist, add it
+      closedCountSheet.getRange('B1').setValue('Location');
+      Logger.log("'Location' column added.");
+    }
   }
 
   // Get today's date in YYYY-MM-DD format
