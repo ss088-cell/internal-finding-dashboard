@@ -1,103 +1,81 @@
-function compareDataAndCountClosed() {
-  var sheetId = 'YOUR_SHEET_ID'; // Replace with your Google Sheet ID
-  var ss = SpreadsheetApp.openById(sheetId); // Open the Google Sheet by ID
-  var detailSheet = ss.getSheetByName('Detail Data');
-  var lastWeekSheet = ss.getSheetByName('Last week data');
-  var closedCountSheet = ss.getSheetByName('Weekly Closed Count');
+function generateLastWeekClosedCount() {
+  const sheetId = 'YOUR_SHEET_ID'; // Replace with your Google Sheet ID
+  const ss = SpreadsheetApp.openById(sheetId); // Open the Google Sheet by ID
+  const detailSheet = ss.getSheetByName('Detail Data');
+  const lastWeekSheet = ss.getSheetByName('Last Week Data');
   
-  // Log the start of the comparison
-  Logger.log("Starting the comparison of 'Unique Identifier w Repository & Port' data.");
+  // Get the data from both sheets
+  const detailData = detailSheet.getDataRange().getValues();
+  const lastWeekData = lastWeekSheet.getDataRange().getValues();
 
-  // Get the "Unique Identifier w Repository & Port" columns (Column U - 21) and "Location" columns (Column Q - 17) from both sheets
-  var detailData = detailSheet.getRange('U2:U' + detailSheet.getLastRow()).getValues(); // Column U (Unique Identifier)
-  var lastWeekData = lastWeekSheet.getRange('U2:U' + lastWeekSheet.getLastRow()).getValues(); // Column U (Unique Identifier)
-  var detailLocations = detailSheet.getRange('Q2:Q' + detailSheet.getLastRow()).getValues(); // Column Q (Location)
-  var lastWeekLocations = lastWeekSheet.getRange('Q2:Q' + lastWeekSheet.getLastRow()).getValues(); // Column Q (Location)
-  
-  // Create a set for fast lookup of Unique Identifiers from Detail Data
-  var detailDataSet = new Set(detailData.flat());
-  
-  // Initialize an object to store the closed count for each location
-  var locationClosedCount = {};
-  
-  // Log data comparison
-  Logger.log("Comparing 'Last Week Data' with 'Detail Data'...");
-
-  // Loop through last week data and check if it's missing in detail data
-  for (var i = 0; i < lastWeekData.length; i++) {
-    var lastWeekID = lastWeekData[i][0];
-    var lastWeekLocation = lastWeekLocations[i][0];
-    
-    if (!detailDataSet.has(lastWeekID)) {
-      // Increment the closed count for the location
-      if (locationClosedCount[lastWeekLocation]) {
-        locationClosedCount[lastWeekLocation]++;
-      } else {
-        locationClosedCount[lastWeekLocation] = 1;
-      }
-    }
-  }
-
-  // Log after comparison
-  Logger.log("Data comparison complete. Found " + Object.keys(locationClosedCount).length + " locations with closed entries.");
-
-  // Check if the "Weekly Closed Count" sheet exists, if not, create it
+  // Create or clear the "Last Week Closed Count" sheet
+  let closedCountSheet = ss.getSheetByName('Last Week Closed Count');
   if (!closedCountSheet) {
-    closedCountSheet = ss.insertSheet('Weekly Closed Count');
-    // Add headers if the sheet was created
-    closedCountSheet.getRange('A1').setValue('Date');
-    closedCountSheet.getRange('B1').setValue('Location');
-    closedCountSheet.getRange('C1').setValue('Closed Count');
-    Logger.log("Created 'Weekly Closed Count' sheet with headers.");
-  }
-
-  // Get today's date in YYYY-MM-DD format
-  var today = new Date();
-  var formattedDate = Utilities.formatDate(today, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  
-  // Log the date check
-  Logger.log("Checking if the data for today (" + formattedDate + ") already exists.");
-
-  // Check if an entry for today already exists
-  var data = closedCountSheet.getDataRange().getValues();
-  var dateExists = false;
-  
-  // Loop through data to check if the date exists
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === formattedDate) {
-      dateExists = true;
-      break;
-    }
-  }
-
-  // Log the result of date check
-  if (dateExists) {
-    Logger.log("Entry for today's date exists. Updating the closed count.");
-    // If the date exists, update the closed count for each location
-    for (var location in locationClosedCount) {
-      var locationRow = closedCountSheet.getRange('B2:B' + closedCountSheet.getLastRow()).getValues();
-      var locationFound = false;
-      for (var i = 0; i < locationRow.length; i++) {
-        if (locationRow[i][0] === location) {
-          closedCountSheet.getRange(i + 2, 3).setValue(locationClosedCount[location]); // Correcting the column to update the Closed Count (Column C)
-          locationFound = true;
-          break;
-        }
-      }
-
-      // If location is not found, add a new row for that location
-      if (!locationFound) {
-        closedCountSheet.appendRow([formattedDate, location, locationClosedCount[location]]);
-      }
-    }
+    closedCountSheet = ss.insertSheet('Last Week Closed Count');
   } else {
-    Logger.log("No entry found for today's date. Adding a new entry.");
-    // If no entry for today, add a new entry for each location
-    for (var location in locationClosedCount) {
-      closedCountSheet.appendRow([formattedDate, location, locationClosedCount[location]]);
-    }
+    closedCountSheet.clear(); // Clear existing data
   }
 
-  // Log the successful update
-  Logger.log("Data updated successfully in 'Weekly Closed Count' sheet.");
+  // Add header row
+  closedCountSheet.appendRow(['Date', 'Location', 'Patched', 'New', 'Unpatched']);
+
+  const today = new Date().toLocaleDateString(); // Current date
+
+  // Collect all unique locations from both sheets
+  const locations = [...new Set([
+    ...detailData.map(row => row[detailData[0].indexOf('Location')]),
+    ...lastWeekData.map(row => row[lastWeekData[0].indexOf('Location')])
+  ])];
+
+  // Iterate through each location and count New, Patched, and Unpatched findings
+  locations.forEach(location => {
+    const newFindings = countNewFindings(detailData, lastWeekData, location);
+    const patchedFindings = countPatchedFindings(detailData, lastWeekData, location);
+    const unpatchedFindings = countUnpatchedFindings(detailData, lastWeekData, location);
+
+    // Output results to the new sheet
+    closedCountSheet.appendRow([today, location, patchedFindings, newFindings, unpatchedFindings]);
+  });
+}
+
+// Count New findings: Present in Detail Data but not in Last Week Data
+function countNewFindings(detailData, lastWeekData, location) {
+  const detailIdentifiers = getIdentifiersByLocation(detailData, location);
+  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, location);
+
+  return detailIdentifiers.filter(identifier => !lastWeekIdentifiers.includes(identifier)).length;
+}
+
+// Count Patched findings: Present in Last Week Data but not in Detail Data
+function countPatchedFindings(detailData, lastWeekData, location) {
+  const detailIdentifiers = getIdentifiersByLocation(detailData, location);
+  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, location);
+
+  return lastWeekIdentifiers.filter(identifier => !detailIdentifiers.includes(identifier)).length;
+}
+
+// Count Unpatched findings: Identifiers present in both but have changes
+function countUnpatchedFindings(detailData, lastWeekData, location) {
+  const detailIdentifiers = getIdentifiersByLocation(detailData, location);
+  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, location);
+
+  return detailIdentifiers.filter(identifier => 
+    lastWeekIdentifiers.includes(identifier) &&
+    hasChanges(identifier, detailData, lastWeekData, location)
+  ).length;
+}
+
+// Get identifiers by location
+function getIdentifiersByLocation(data, location) {
+  return data.filter(row => row[data[0].indexOf('Location')] === location)
+             .map(row => row[data[0].indexOf('Unique Identifier w Repository & Port')]);
+}
+
+// Check if there are changes for an identifier between this week and last week
+function hasChanges(identifier, detailData, lastWeekData, location) {
+  const detailRow = detailData.find(row => row[detailData[0].indexOf('Unique Identifier w Repository & Port')] === identifier && row[detailData[0].indexOf('Location')] === location);
+  const lastWeekRow = lastWeekData.find(row => row[lastWeekData[0].indexOf('Unique Identifier w Repository & Port')] === identifier && row[lastWeekData[0].indexOf('Location')] === location);
+
+  // Compare any other columns you want to track for changes (example: "Status", "Description")
+  return detailRow && lastWeekRow && detailRow.join() !== lastWeekRow.join();
 }
