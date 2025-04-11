@@ -49,14 +49,6 @@ function compareDataAndCountClosed() {
     closedCountSheet.getRange('B1').setValue('Location');
     closedCountSheet.getRange('C1').setValue('Closed Count');
     Logger.log("Created 'Weekly Closed Count' sheet with headers.");
-  } else {
-    // If the sheet exists, ensure the "Location" column exists
-    var headers = closedCountSheet.getRange('A1:C1').getValues()[0];
-    if (headers.indexOf('Location') === -1) {
-      // If the "Location" column doesn't exist, add it
-      closedCountSheet.getRange('B1').setValue('Location');
-      Logger.log("'Location' column added.");
-    }
   }
 
   // Get today's date in YYYY-MM-DD format
@@ -69,7 +61,7 @@ function compareDataAndCountClosed() {
   // Check if an entry for today already exists
   var data = closedCountSheet.getDataRange().getValues();
   var dateExists = false;
-
+  
   // Loop through data to check if the date exists
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] === formattedDate) {
@@ -83,7 +75,6 @@ function compareDataAndCountClosed() {
     Logger.log("Entry for today's date exists. Updating the closed count.");
     // If the date exists, update the closed count for each location
     for (var location in locationClosedCount) {
-      // Find the row for the location and update its count
       var locationRow = closedCountSheet.getRange('B2:B' + closedCountSheet.getLastRow()).getValues();
       var locationFound = false;
       for (var i = 0; i < locationRow.length; i++) {
