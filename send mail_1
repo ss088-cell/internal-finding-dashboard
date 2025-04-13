@@ -1,0 +1,25 @@
+function sendMail() {
+  const sheetId = 'YOUR_SHEET_ID'; // Replace with your Google Sheet ID
+  const ss = SpreadsheetApp.openById(sheetId); // Open the Google Sheet by ID
+  
+  // Get the URL of the "Internal Finding Dashboard" sheet
+  const internalFindingDashboardUrl = ss.getUrl() + '#gid=' + ss.getSheetByName('Internal Finding Dashboard').getSheetId();
+
+  // Email content
+  const emailAddress = 'your-email@example.com'; // Replace with your email address
+  const subject = 'Internal Finding Dashboard Report';
+  const body = 'Please find the link to the Internal Finding Dashboard report below.\n\n';
+  const linkMessage = 'You can view the report using the following link: ' + internalFindingDashboardUrl;
+  
+  // Combine email body with the link message
+  const finalBody = body + linkMessage;
+
+  // Send the email with the link to the Google Sheet
+  MailApp.sendEmail({
+    to: emailAddress,
+    subject: subject,
+    body: finalBody
+  });
+
+  Logger.log('Email sent successfully with the link to the report.');
+}
