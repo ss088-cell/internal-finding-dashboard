@@ -37,14 +37,61 @@
       .button:active {
         background-color: #004085;
       }
-      /* Button focus effect */
       .button:focus {
         outline: none;
       }
-      /* Make sure text aligns properly */
-      .content {
+
+      /* Toast Notification */
+      .toast {
+        visibility: hidden;
+        min-width: 250px;
+        margin-left: -125px;
+        background-color: #333;
+        color: white;
         text-align: center;
-        padding: 0 20px;
+        border-radius: 2px;
+        padding: 16px;
+        position: fixed;
+        z-index: 1;
+        left: 50%;
+        bottom: 30px;
+        font-size: 17px;
+        opacity: 0;
+        transition: opacity 0.5s ease-in-out;
+      }
+      .toast.show {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      /* Execution Log Container */
+      #logContainer {
+        width: 80%;
+        max-height: 200px;
+        overflow-y: auto;
+        background-color: #f4f4f4;
+        padding: 10px;
+        margin-top: 20px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        font-size: 14px;
+        color: #333;
+      }
+
+      /* Success Popup */
+      .popup {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #4CAF50;
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        font-size: 18px;
+        text-align: center;
+        z-index: 2;
       }
     </style>
   </head>
@@ -54,14 +101,61 @@
       <button class="button" onclick="generateCount()">Generate Count</button>
     </div>
 
+    <!-- Toast notification -->
+    <div id="toast" class="toast">Fetching Data...</div>
+
+    <!-- Execution Log Container -->
+    <div id="logContainer"></div>
+
+    <!-- Success Popup -->
+    <div id="popup" class="popup">New Count Generated successfully!</div>
+
     <script>
+      // Show toast notification
+      function showToast(message) {
+        var toast = document.getElementById("toast");
+        toast.innerHTML = message;
+        toast.className = "toast show";
+        setTimeout(function () {
+          toast.className = toast.className.replace("show", "");
+        }, 3000);
+      }
+
+      // Update log container with the execution log
+      function updateLog(message) {
+        const logContainer = document.getElementById("logContainer");
+        logContainer.innerHTML += `<p>${message}</p>`;
+        logContainer.scrollTop = logContainer.scrollHeight; // Scroll to the bottom
+      }
+
       // Function to call the Apps Script function when the button is clicked
       function generateCount() {
+        showToast('Fetching Data...');
+        updateLog('Process started...');
+
         google.script.run
           .withSuccessHandler(function(response) {
-            alert(response); // Show success message in alert
+            // Display final success message
+            updateLog('Process completed!');
+            showPopup();
+            setTimeout(function() {
+              alert(response); // Final success alert
+            }, 500);  // Delay to show the message properly before alert
+          })
+          .withFailureHandler(function(error) {
+            // Handle error in case the process fails
+            updateLog('Error occurred: ' + error.message);
           })
           .generateCount(); // Calls the Apps Script function 'generateCount'
+      }
+
+      // Show success popup
+      function showPopup() {
+        var popup = document.getElementById("popup");
+        popup.style.display = "block";
+        setTimeout(function () {
+          popup.style.display = "none"; // Hide after 3 seconds
+        }, 3000);
       }
     </script>
   </body>
