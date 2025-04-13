@@ -47,7 +47,7 @@
         outline: none;
       }
 
-      /* Toast Notification */
+      /* Smaller Toast Notification */
       .toast {
         visibility: hidden;
         min-width: 250px;
@@ -55,15 +55,16 @@
         background-color: #333;
         color: white;
         text-align: center;
-        border-radius: 2px;
-        padding: 16px;
+        border-radius: 8px;
+        padding: 12px;
         position: fixed;
         z-index: 1;
         left: 50%;
         bottom: 30px;
-        font-size: 17px;
+        font-size: 14px;
         opacity: 0;
         transition: opacity 0.5s ease-in-out;
+        border-radius: 12px;
       }
       .toast.show {
         visibility: visible;
@@ -101,6 +102,22 @@
         z-index: 2;
       }
 
+      /* Close Button for Popup */
+      #closeButton {
+        background-color: #f44336;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 8px;
+        margin-top: 10px;
+      }
+
+      #closeButton:hover {
+        background-color: #d32f2f;
+      }
+
       /* Stop Button Styling */
       #stopButton {
         background-color: #dc3545;
@@ -135,7 +152,10 @@
     <div id="logContainer"></div>
 
     <!-- Success Popup -->
-    <div id="popup" class="popup">New Count Generated successfully!</div>
+    <div id="popup" class="popup">
+      <p>New Count Generated successfully!</p>
+      <button id="closeButton" onclick="closePopup()">Close</button>
+    </div>
 
     <!-- Stop Button -->
     <button id="stopButton" onclick="stopProcess()">Stop Process</button>
@@ -193,6 +213,12 @@
         }, 3000);
       }
 
+      // Close the popup
+      function closePopup() {
+        var popup = document.getElementById("popup");
+        popup.style.display = "none";
+      }
+
       // Stop the process
       function stopProcess() {
         isStopped = true; // Set the flag to stop
@@ -202,4 +228,3 @@
     </script>
   </body>
 </html>
-
