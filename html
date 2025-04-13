@@ -82,6 +82,7 @@
         border: 1px solid #ddd;
         font-size: 14px;
         color: #333;
+        display: none; /* Hidden initially */
       }
 
       /* Success Popup */
@@ -98,6 +99,23 @@
         font-size: 18px;
         text-align: center;
         z-index: 2;
+      }
+
+      /* Stop Button Styling */
+      #stopButton {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 8px;
+        margin-top: 10px;
+        display: none; /* Hidden initially */
+      }
+
+      #stopButton:hover {
+        background-color: #c82333;
       }
     </style>
   </head>
@@ -119,7 +137,12 @@
     <!-- Success Popup -->
     <div id="popup" class="popup">New Count Generated successfully!</div>
 
+    <!-- Stop Button -->
+    <button id="stopButton" onclick="stopProcess()">Stop Process</button>
+
     <script>
+      var isStopped = false; // Flag to indicate whether the process should be stopped
+
       // Show toast notification
       function showToast(message) {
         var toast = document.getElementById("toast");
@@ -133,27 +156,29 @@
       // Update log container with the execution log
       function updateLog(message) {
         const logContainer = document.getElementById("logContainer");
+        logContainer.style.display = "block"; // Show log container
         logContainer.innerHTML += `<p>${message}</p>`;
         logContainer.scrollTop = logContainer.scrollHeight; // Scroll to the bottom
       }
 
       // Function to call the Apps Script function when the button is clicked
       function generateCount() {
-        // Show toast when clicking the button
+        isStopped = false; // Reset stop flag
         showToast('Fetching Data...');
         updateLog('Process started...');
+        document.getElementById('stopButton').style.display = 'inline-block'; // Show stop button
 
         google.script.run
           .withSuccessHandler(function(response) {
-            // Display final success message
-            updateLog('Process completed!');
-            showPopup();
-            setTimeout(function() {
-              alert(response); // Final success alert
-            }, 500);  // Delay to show the message properly before alert
+            if (!isStopped) {
+              updateLog('Process completed!');
+              showPopup();
+              setTimeout(function() {
+                alert(response); // Final success alert
+              }, 500);  // Delay to show the message properly before alert
+            }
           })
           .withFailureHandler(function(error) {
-            // Handle error in case the process fails
             updateLog('Error occurred: ' + error.message);
           })
           .generateCount(); // Calls the Apps Script function 'generateCount'
@@ -166,6 +191,13 @@
         setTimeout(function () {
           popup.style.display = "none"; // Hide after 3 seconds
         }, 3000);
+      }
+
+      // Stop the process
+      function stopProcess() {
+        isStopped = true; // Set the flag to stop
+        updateLog('Process stopped by user.');
+        document.getElementById('stopButton').style.display = 'none'; // Hide the stop button
       }
     </script>
   </body>
