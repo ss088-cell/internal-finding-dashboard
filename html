@@ -19,6 +19,13 @@
         color: #004d99;
         text-align: center;
       }
+      /* Center the button */
+      .button-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+      }
       .button {
         background-color: #007bff; /* Button background color */
         color: white;
@@ -28,7 +35,6 @@
         cursor: pointer;
         border-radius: 8px;
         transition: transform 0.3s ease, background-color 0.3s ease;
-        margin-top: 20px;
       }
       .button:hover {
         background-color: #0056b3;
@@ -98,7 +104,10 @@
   <body>
     <div class="content">
       <h1>Fetch Current Count for Internal Vulnerabilities</h1>
-      <button class="button" onclick="generateCount()">Generate Count</button>
+      <!-- Center the button in the page -->
+      <div class="button-container">
+        <button class="button" onclick="generateCount()">Generate Count</button>
+      </div>
     </div>
 
     <!-- Toast notification -->
@@ -130,6 +139,7 @@
 
       // Function to call the Apps Script function when the button is clicked
       function generateCount() {
+        // Show toast when clicking the button
         showToast('Fetching Data...');
         updateLog('Process started...');
 
@@ -160,3 +170,4 @@
     </script>
   </body>
 </html>
+
