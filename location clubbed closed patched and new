@@ -4,6 +4,8 @@ function generateLastWeekClosedCount() {
   const detailSheet = ss.getSheetByName('Detail Data');
   const lastWeekSheet = ss.getSheetByName('Last Week Data');
   
+  Logger.log('Fetching data from sheets...');
+  
   // Get the data from both sheets
   const detailData = detailSheet.getDataRange().getValues();
   const lastWeekData = lastWeekSheet.getDataRange().getValues();
@@ -11,6 +13,9 @@ function generateLastWeekClosedCount() {
   // Get column indices for "Location" and "Unique Identifier w Repository & Port"
   const locationColumnIndex = detailData[0].indexOf('Location');
   const identifierColumnIndex = detailData[0].indexOf('Unique Identifier w Repository & Port');
+  
+  Logger.log('Location Column Index: ' + locationColumnIndex);
+  Logger.log('Identifier Column Index: ' + identifierColumnIndex);
 
   // Define the location groups
   const locationGroups = {
@@ -20,12 +25,16 @@ function generateLastWeekClosedCount() {
     "Group 4": ["Jeffersonville IN"]
   };
 
+  Logger.log('Location groups defined: ' + JSON.stringify(locationGroups));
+
   // Create or clear the "Last Week Closed Count" sheet
   let closedCountSheet = ss.getSheetByName('Last Week Closed Count');
   if (!closedCountSheet) {
     closedCountSheet = ss.insertSheet('Last Week Closed Count');
+    Logger.log('Created new "Last Week Closed Count" sheet.');
   } else {
     closedCountSheet.clear(); // Clear existing data
+    Logger.log('Cleared existing "Last Week Closed Count" sheet.');
   }
 
   // Add header row
@@ -35,13 +44,23 @@ function generateLastWeekClosedCount() {
 
   // Iterate through each group and count New, Patched, and Unpatched findings
   for (const [groupName, locations] of Object.entries(locationGroups)) {
+    Logger.log('Processing ' + groupName + ' with locations: ' + locations.join(', '));
+
     const newFindings = countNewFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
     const patchedFindings = countPatchedFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
     const unpatchedFindings = countUnpatchedFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
 
+    Logger.log(groupName + ' - New Findings: ' + newFindings);
+    Logger.log(groupName + ' - Patched Findings: ' + patchedFindings);
+    Logger.log(groupName + ' - Unpatched Findings: ' + unpatchedFindings);
+
     // Output results to the new sheet
     closedCountSheet.appendRow([today, groupName, patchedFindings, newFindings, unpatchedFindings]);
+
+    Logger.log('Data written for ' + groupName + ' to "Last Week Closed Count" sheet.');
   }
+
+  Logger.log('Script completed.');
 }
 
 // Count New findings: Present in Detail Data but not in Last Week Data
@@ -49,7 +68,9 @@ function countNewFindings(detailData, lastWeekData, locationColumnIndex, identif
   const detailIdentifiers = getIdentifiersByLocation(detailData, locationColumnIndex, identifierColumnIndex, locations);
   const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
 
-  return detailIdentifiers.filter(identifier => !lastWeekIdentifiers.includes(identifier)).length;
+  const newCount = detailIdentifiers.filter(identifier => !lastWeekIdentifiers.includes(identifier)).length;
+  Logger.log('New Findings Count: ' + newCount);
+  return newCount;
 }
 
 // Count Patched findings: Present in Last Week Data but not in Detail Data
@@ -57,7 +78,9 @@ function countPatchedFindings(detailData, lastWeekData, locationColumnIndex, ide
   const detailIdentifiers = getIdentifiersByLocation(detailData, locationColumnIndex, identifierColumnIndex, locations);
   const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
 
-  return lastWeekIdentifiers.filter(identifier => !detailIdentifiers.includes(identifier)).length;
+  const patchedCount = lastWeekIdentifiers.filter(identifier => !detailIdentifiers.includes(identifier)).length;
+  Logger.log('Patched Findings Count: ' + patchedCount);
+  return patchedCount;
 }
 
 // Count Unpatched findings: Identifiers present in both this week and last week with the same location
@@ -65,13 +88,17 @@ function countUnpatchedFindings(detailData, lastWeekData, locationColumnIndex, i
   const detailIdentifiers = getIdentifiersByLocation(detailData, locationColumnIndex, identifierColumnIndex, locations);
   const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
 
-  return detailIdentifiers.filter(identifier => 
+  const unpatchedCount = detailIdentifiers.filter(identifier => 
     lastWeekIdentifiers.includes(identifier)
   ).length;
+
+  Logger.log('Unpatched Findings Count: ' + unpatchedCount);
+  return unpatchedCount;
 }
 
 // Get identifiers by location (filtering by grouped locations)
 function getIdentifiersByLocation(data, locationColumnIndex, identifierColumnIndex, locations) {
+  Logger.log('Filtering identifiers for locations: ' + locations.join(', '));
   return data.slice(1).filter(row => locations.includes(row[locationColumnIndex]))
              .map(row => row[identifierColumnIndex]);
 }
