@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        background-color: lightblue;
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        flex-direction: column;
+      }
+      h1 {
+        color: #333;
+      }
+      .button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      .button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Fetch Current Count for Internal Vulnerabilities</h1>
+    <button class="button" onclick="generateCount()">Generate Count</button>
+
+    <script>
+      // Function to call the Apps Script function when the button is clicked
+      function generateCount() {
+        google.script.run
+          .withSuccessHandler(function(response) {
+            alert(response); // Show success message in alert
+          })
+          .generateCount(); // Calls the Apps Script function 'generateCount'
+      }
+    </script>
+  </body>
+</html>
