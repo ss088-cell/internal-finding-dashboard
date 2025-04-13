@@ -1,0 +1,77 @@
+function generateLastWeekClosedCount() {
+  const sheetId = 'YOUR_SHEET_ID'; // Replace with your Google Sheet ID
+  const ss = SpreadsheetApp.openById(sheetId); // Open the Google Sheet by ID
+  const detailSheet = ss.getSheetByName('Detail Data');
+  const lastWeekSheet = ss.getSheetByName('Last Week Data');
+  
+  // Get the data from both sheets
+  const detailData = detailSheet.getDataRange().getValues();
+  const lastWeekData = lastWeekSheet.getDataRange().getValues();
+
+  // Get column indices for "Location" and "Unique Identifier w Repository & Port"
+  const locationColumnIndex = detailData[0].indexOf('Location');
+  const identifierColumnIndex = detailData[0].indexOf('Unique Identifier w Repository & Port');
+
+  // Define the location groups
+  const locationGroups = {
+    "Group 1": ["Richmond VA", "Richmond DC"],
+    "Group 2": ["Google Central", "Google East 1"],
+    "Group 3": ["Atlanta GA"],
+    "Group 4": ["Jeffersonville IN"]
+  };
+
+  // Create or clear the "Last Week Closed Count" sheet
+  let closedCountSheet = ss.getSheetByName('Last Week Closed Count');
+  if (!closedCountSheet) {
+    closedCountSheet = ss.insertSheet('Last Week Closed Count');
+  } else {
+    closedCountSheet.clear(); // Clear existing data
+  }
+
+  // Add header row
+  closedCountSheet.appendRow(['Date', 'Location Group', 'Patched', 'New', 'Unpatched']);
+
+  const today = new Date().toLocaleDateString(); // Current date
+
+  // Iterate through each group and count New, Patched, and Unpatched findings
+  for (const [groupName, locations] of Object.entries(locationGroups)) {
+    const newFindings = countNewFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
+    const patchedFindings = countPatchedFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
+    const unpatchedFindings = countUnpatchedFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
+
+    // Output results to the new sheet
+    closedCountSheet.appendRow([today, groupName, patchedFindings, newFindings, unpatchedFindings]);
+  }
+}
+
+// Count New findings: Present in Detail Data but not in Last Week Data
+function countNewFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, locations) {
+  const detailIdentifiers = getIdentifiersByLocation(detailData, locationColumnIndex, identifierColumnIndex, locations);
+  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
+
+  return detailIdentifiers.filter(identifier => !lastWeekIdentifiers.includes(identifier)).length;
+}
+
+// Count Patched findings: Present in Last Week Data but not in Detail Data
+function countPatchedFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, locations) {
+  const detailIdentifiers = getIdentifiersByLocation(detailData, locationColumnIndex, identifierColumnIndex, locations);
+  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
+
+  return lastWeekIdentifiers.filter(identifier => !detailIdentifiers.includes(identifier)).length;
+}
+
+// Count Unpatched findings: Identifiers present in both this week and last week with the same location
+function countUnpatchedFindings(detailData, lastWeekData, locationColumnIndex, identifierColumnIndex, locations) {
+  const detailIdentifiers = getIdentifiersByLocation(detailData, locationColumnIndex, identifierColumnIndex, locations);
+  const lastWeekIdentifiers = getIdentifiersByLocation(lastWeekData, locationColumnIndex, identifierColumnIndex, locations);
+
+  return detailIdentifiers.filter(identifier => 
+    lastWeekIdentifiers.includes(identifier)
+  ).length;
+}
+
+// Get identifiers by location (filtering by grouped locations)
+function getIdentifiersByLocation(data, locationColumnIndex, identifierColumnIndex, locations) {
+  return data.slice(1).filter(row => locations.includes(row[locationColumnIndex]))
+             .map(row => row[identifierColumnIndex]);
+}
