@@ -1,34 +1,22 @@
 function sendMail() {
   const sheetId = 'YOUR_SHEET_ID'; // Replace with your Google Sheet ID
   const ss = SpreadsheetApp.openById(sheetId); // Open the Google Sheet by ID
-
-  // Try to get the "Internal Findings Dashboard" sheet
-  const internalFindingDashboard = ss.getSheetByName('Internal Findings Dashboard');
   
-  // Check if the sheet exists
-  if (!internalFindingDashboard) {
-    Logger.log("Sheet 'Internal Findings Dashboard' not found!");
-    return; // Exit the function if the sheet is not found
-  }
-
-  // Get the URL of the "Internal Findings Dashboard" sheet
-  const internalFindingDashboardUrl = ss.getUrl() + '#gid=' + internalFindingDashboard.getSheetId();
+  // Get the Google Sheet file
+  const file = DriveApp.getFileById(sheetId);
 
   // Email content
-  const emailAddress = 'your-email@example.com'; // Replace with your email address
+  const emailAddress = 'your-email@example.com'; // Replace with the recipient's email address
   const subject = 'Internal Findings Dashboard Report';
-  const body = 'Please find the link to the Internal Findings Dashboard report below.\n\n';
-  const linkMessage = 'You can view the report using the following link: ' + internalFindingDashboardUrl;
+  const body = 'Please find the attached Google Sheet - Internal Findings Dashboard report.';
 
-  // Combine email body with the link message
-  const finalBody = body + linkMessage;
-
-  // Send the email with the link to the Google Sheet
-  MailApp.sendEmail({
+  // Send the email with the entire Google Sheet as an attachment (Google Sheets format)
+  GmailApp.sendEmail({
     to: emailAddress,
     subject: subject,
-    body: finalBody
+    body: body,
+    attachments: [file.getAs(MimeType.GOOGLE_SHEETS)] // Attach the whole Google Sheet
   });
 
-  Logger.log('Email sent successfully with the link to the report.');
+  Logger.log('Email sent successfully with the Google Sheet attached.');
 }
