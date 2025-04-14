@@ -6,15 +6,12 @@ function sendMail() {
   const file = DriveApp.getFileById(sheetId);
 
   // Email content
-  const emailAddress = 'your-email@example.com'; // Replace with the recipient's email address
+  const emailAddress = 'your-email@example.com'; // Replace with your email address
   const subject = 'Internal Findings Dashboard Report';
   const body = 'Please find the attached Google Sheet - Internal Findings Dashboard report.';
 
   // Send the email with the entire Google Sheet as an attachment (Google Sheets format)
-  GmailApp.sendEmail({
-    to: emailAddress,
-    subject: subject,
-    body: body,
+  GmailApp.sendEmail(emailAddress, subject, body, {
     attachments: [file.getAs(MimeType.GOOGLE_SHEETS)] // Attach the whole Google Sheet
   });
 
