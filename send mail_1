@@ -15,10 +15,10 @@ Regards,
 Team`;
 
   // Send the email with the fixed link to the Google Sheet
-  GmailApp.sendEmail({
-    to: emailAddress,
-    subject: subject,
-    body: body
+  GmailApp.sendEmail(emailAddress, subject, body, {
+    // Optionally, if you want to include attachments or other options, you can add them here
+    // Example:
+    // attachments: [file.getAs(MimeType.GOOGLE_SHEETS)]
   });
 
   Logger.log('Email sent successfully with the fixed link to the report.');
