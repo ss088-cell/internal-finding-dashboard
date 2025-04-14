@@ -1,19 +1,25 @@
 function sendMail() {
-  const sheetId = 'YOUR_SHEET_ID'; // Replace with your Google Sheet ID
-  const ss = SpreadsheetApp.openById(sheetId); // Open the Google Sheet by ID
-  
-  // Get the Google Sheet file
-  const file = DriveApp.getFileById(sheetId);
+  const reportLink = 'https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=YOUR_SHEET_GID'; // Replace with the fixed link to your report
+  const currentDate = new Date().toLocaleDateString(); // Get the current date
 
   // Email content
-  const emailAddress = 'your-email@example.com'; // Replace with your email address
-  const subject = 'Internal Findings Dashboard Report';
-  const body = 'Please find the attached Google Sheet - Internal Findings Dashboard report.';
+  const emailAddress = 'your-email@example.com'; // Replace with the recipient's email address
+  const subject = `Internal Findings Dashboard Report for "${currentDate}"`; // Date in the subject
+  const body = `Hi Team,
 
-  // Send the email with the entire Google Sheet as an attachment (Google Sheets format)
-  GmailApp.sendEmail(emailAddress, subject, body, {
-    attachments: [file.getAs(MimeType.GOOGLE_SHEETS)] // Attach the whole Google Sheet
+Please find below the link for Internal findings for Robinhood for "${currentDate}":
+
+${reportLink}
+
+Regards,
+Team`;
+
+  // Send the email with the fixed link to the Google Sheet
+  GmailApp.sendEmail({
+    to: emailAddress,
+    subject: subject,
+    body: body
   });
 
-  Logger.log('Email sent successfully with the Google Sheet attached.');
+  Logger.log('Email sent successfully with the fixed link to the report.');
 }
