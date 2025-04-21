@@ -1,0 +1,64 @@
+function sortAndOrganizeVPRData() {
+  // Get the sheet ID (replace with your actual sheet ID)
+  var sheetId = 'YOUR_SHEET_ID';  // Replace with your actual Google Sheet ID
+  var spreadsheet = SpreadsheetApp.openById(sheetId);
+  
+  // Access the 'Detail Data' sheet
+  var sheet = spreadsheet.getSheetByName('Detail Data');
+  if (!sheet) {
+    Logger.log('Detail Data sheet not found!');
+    return;
+  }
+
+  // Get all data from 'Detail Data' sheet
+  var data = sheet.getDataRange().getValues();
+  
+  // Get the header row (first row)
+  var header = data[0];
+  
+  // Find the column index for VPR (assuming 'VPR' is one of the headers)
+  var vprColumnIndex = header.indexOf('VPR');
+  if (vprColumnIndex === -1) {
+    Logger.log('VPR column not found!');
+    return;
+  }
+  
+  // Sort the data based on VPR column (starting from the second row to skip header)
+  data.sort(function(a, b) {
+    var vprA = a[vprColumnIndex];
+    var vprB = b[vprColumnIndex];
+    
+    // Custom sorting order for VPR values
+    var order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+    return order.indexOf(vprA) - order.indexOf(vprB);
+  });
+
+  // Create or clear sheets for CRITICAL, HIGH, MEDIUM, LOW
+  var categories = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+  
+  categories.forEach(function(category) {
+    var sheetName = category;
+    var sheetExists = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheetExists) {
+      // Create new sheet if it doesn't exist
+      sheetExists = spreadsheet.insertSheet(sheetName);
+    } else {
+      // Clear the existing sheet data
+      sheetExists.clear();
+    }
+
+    // Set header row in the new sheet
+    sheetExists.appendRow(header);
+    
+    // Filter data by VPR value and add rows to the appropriate sheet
+    var filteredData = data.filter(function(row) {
+      return row[vprColumnIndex] === category;
+    });
+    
+    // Append the filtered data to the respective sheet
+    filteredData.forEach(function(row) {
+      sheetExists.appendRow(row);
+    });
+  });
+}
