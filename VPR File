@@ -1,5 +1,4 @@
 function sortAndOrganizeVPRData() {
-  // Get the sheet ID (replace with your actual sheet ID)
   var sheetId = 'YOUR_SHEET_ID';  // Replace with your actual Google Sheet ID
   var spreadsheet = SpreadsheetApp.openById(sheetId);
   
@@ -10,11 +9,8 @@ function sortAndOrganizeVPRData() {
     return;
   }
 
-  // Get all data from 'Detail Data' sheet
-  var data = sheet.getDataRange().getValues();
-  
   // Get the header row (first row)
-  var header = data[0];
+  var header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   
   // Find the column index for VPR (assuming 'VPR' is one of the headers)
   var vprColumnIndex = header.indexOf('VPR');
@@ -23,42 +19,51 @@ function sortAndOrganizeVPRData() {
     return;
   }
   
-  // Sort the data based on VPR column (starting from the second row to skip header)
-  data.sort(function(a, b) {
-    var vprA = a[vprColumnIndex];
-    var vprB = b[vprColumnIndex];
-    
-    // Custom sorting order for VPR values
-    var order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
-    return order.indexOf(vprA) - order.indexOf(vprB);
-  });
-
+  // Process data in smaller chunks (e.g., 500 rows at a time)
+  var batchSize = 500;
+  var numRows = sheet.getLastRow();
+  var data;
+  
   // Create or clear sheets for CRITICAL, HIGH, MEDIUM, LOW
   var categories = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
   
   categories.forEach(function(category) {
-    var sheetName = category;
-    var sheetExists = spreadsheet.getSheetByName(sheetName);
-    
+    var sheetExists = spreadsheet.getSheetByName(category);
     if (!sheetExists) {
-      // Create new sheet if it doesn't exist
-      sheetExists = spreadsheet.insertSheet(sheetName);
+      sheetExists = spreadsheet.insertSheet(category);
     } else {
-      // Clear the existing sheet data
-      sheetExists.clear();
+      sheetExists.clear();  // Clear existing data
     }
 
     // Set header row in the new sheet
     sheetExists.appendRow(header);
-    
-    // Filter data by VPR value and add rows to the appropriate sheet
-    var filteredData = data.filter(function(row) {
-      return row[vprColumnIndex] === category;
-    });
-    
-    // Append the filtered data to the respective sheet
-    filteredData.forEach(function(row) {
-      sheetExists.appendRow(row);
-    });
   });
+
+  // Loop through in batches
+  for (var startRow = 2; startRow <= numRows; startRow += batchSize) {
+    var endRow = Math.min(startRow + batchSize - 1, numRows);
+    data = sheet.getRange(startRow, 1, endRow - startRow + 1, sheet.getLastColumn()).getValues();
+
+    // Sort data based on VPR column values (CRITICAL, HIGH, MEDIUM, LOW)
+    data.sort(function(a, b) {
+      var vprA = a[vprColumnIndex];
+      var vprB = b[vprColumnIndex];
+      var order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+      return order.indexOf(vprA) - order.indexOf(vprB);
+    });
+
+    // Append data to the respective sheets
+    categories.forEach(function(category) {
+      var filteredData = data.filter(function(row) {
+        return row[vprColumnIndex] === category;
+      });
+
+      var sheetExists = spreadsheet.getSheetByName(category);
+      filteredData.forEach(function(row) {
+        sheetExists.appendRow(row);
+      });
+    });
+  }
+  
+  Logger.log('Data processing completed.');
 }
